@@ -182,7 +182,7 @@ namespace neogfx
     {
         destroyed_flag destroyed{ *this };
         neolib::scoped_counter<uint32_t> sc{ iProcessingEvent };
-        if (!Filter.trigger(iCurrentEvent))
+        if (event_consumed(Filter.trigger(iCurrentEvent)))
         {
             if (destroyed)
                 sc.ignore();
@@ -191,7 +191,7 @@ namespace neogfx
         if (std::holds_alternative<window_event>(iCurrentEvent))
         {
             auto& windowEvent = static_variant_cast<window_event&>(iCurrentEvent);
-            if (!surface_window().as_window().window_event().trigger(windowEvent))
+            if (event_consumed(surface_window().as_window().window_event().trigger(windowEvent)))
                 return;
             switch (windowEvent.type())
             {
@@ -308,32 +308,40 @@ namespace neogfx
             switch (keyboardEvent.type())
             {
             case keyboard_event_type::KeyPressed:
+                keyboard.set_event_modifiers(keyboardEvent.key_modifiers());
                 if (!keyboard.grabber().key_pressed(keyboardEvent.scan_code(), keyboardEvent.key_code(), keyboardEvent.key_modifiers()))
                 {
                     keyboard.key_pressed().trigger(keyboardEvent.scan_code(), keyboardEvent.key_code(), keyboardEvent.key_modifiers());
                     surface_window().native_window_key_pressed(keyboardEvent.scan_code(), keyboardEvent.key_code(), keyboardEvent.key_modifiers());
                 }
+                keyboard.clear_event_modifiers();
                 break;
             case keyboard_event_type::KeyReleased:
+                keyboard.set_event_modifiers(keyboardEvent.key_modifiers());
                 if (!keyboard.grabber().key_released(keyboardEvent.scan_code(), keyboardEvent.key_code(), keyboardEvent.key_modifiers()))
                 {
                     keyboard.key_released().trigger(keyboardEvent.scan_code(), keyboardEvent.key_code(), keyboardEvent.key_modifiers());
                     surface_window().native_window_key_released(keyboardEvent.scan_code(), keyboardEvent.key_code(), keyboardEvent.key_modifiers());
                 }
+                keyboard.clear_event_modifiers();
                 break;
             case keyboard_event_type::TextInput:
+                keyboard.set_event_modifiers(keyboardEvent.key_modifiers());
                 if (!keyboard.grabber().text_input(string{ keyboardEvent.text() }))
                 {
                     keyboard.text_input().trigger(keyboardEvent.text());
                     surface_window().native_window_text_input(string{ keyboardEvent.text() });
                 }
+                keyboard.clear_event_modifiers();
                 break;
             case keyboard_event_type::SysTextInput:
+                keyboard.set_event_modifiers(keyboardEvent.key_modifiers());
                 if (!keyboard.grabber().sys_text_input(string{ keyboardEvent.text() }))
                 {
                     keyboard.sys_text_input().trigger(keyboardEvent.text());
                     surface_window().native_window_sys_text_input(string{ keyboardEvent.text() });
                 }
+                keyboard.clear_event_modifiers();
                 break;
             default:
                 /* do nothing */

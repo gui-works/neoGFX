@@ -29,9 +29,7 @@
 #include <neogfx/core/i_properties.hpp>
 #include <neogfx/core/event.hpp>
 #include <neogfx/core/geometrical.hpp>
-#include <neogfx/gfx/color.hpp>
-#include <neogfx/gfx/text/font.hpp>
-#include <neogfx/gui/widget/widget_bits.hpp>
+#include <neogfx/core/easing.hpp>
 
 namespace neogfx
 {
@@ -106,6 +104,9 @@ namespace neogfx
         virtual i_properties& properties() = 0;
     };
 
+    class i_animator;
+    class i_transition;
+
     class i_property : public i_property_delegate
     {
         template <typename, typename>
@@ -135,14 +136,20 @@ namespace neogfx
         virtual const std::type_info& category() const = 0;
         virtual bool optional() const = 0;
         virtual property_variant get_as_variant() const = 0;
-        virtual property_variant get_new_as_variant() const = 0;
         virtual void set_from_variant(const property_variant& aValue) = 0;
+        virtual bool read_only() const = 0;
+        virtual void set_read_only(bool aReadOnly) = 0;
+        virtual bool transition_set() const = 0;
+        virtual i_transition& transition() const = 0;
+        virtual void set_transition(i_animator& aAnimator, easing aEasingFunction, double aDuration, bool aEnabled = true) = 0;
+        virtual void clear_transition() = 0;
+        virtual bool transition_suppressed() const = 0;
+        virtual void suppress_transition(bool aSuppress) = 0;
         virtual bool has_delegate() const = 0;
         virtual i_property_delegate const& delegate() const = 0;
         virtual i_property_delegate& delegate() = 0;
         virtual void set_delegate(i_property_delegate& aDelegate) = 0;
         virtual void unset_delegate() = 0;
-        virtual void discard_change_events() = 0;
         // implementation
     protected:
         virtual const void* data() const = 0;
@@ -235,5 +242,39 @@ namespace neogfx
     {
         return *static_cast<i_property_owner&>(Owner).properties().property_map().find(string{ aPropertyName })->second();
     }
+
+    class scoped_property_transition_suppression
+    {
+    public:
+        scoped_property_transition_suppression(i_property& aProperty) :
+            iProperty{ aProperty }, iWasSuppressed{ aProperty.transition_suppressed() }
+        {
+            iProperty.suppress_transition(true);
+        }
+        ~scoped_property_transition_suppression()
+        {
+            iProperty.suppress_transition(iWasSuppressed);
+        }
+    private:
+        i_property& iProperty;
+        bool iWasSuppressed;
+    };
+
+    class scoped_property_read_only
+    {
+    public:
+        scoped_property_read_only(i_property& aProperty) :
+            iProperty{ aProperty }, iWasReadOnly{ aProperty.read_only() }
+        {
+            iProperty.set_read_only(true);
+        }
+        ~scoped_property_read_only()
+        {
+            iProperty.set_read_only(iWasReadOnly);
+        }
+    private:
+        i_property& iProperty;
+        bool iWasReadOnly;
+    };
 }
 

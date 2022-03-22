@@ -18,16 +18,31 @@
 */
 
 #include <neogfx/neogfx.hpp>
+#include <neogfx/app/i_app.hpp>
 #include <neogfx/hid/i_surface_manager.hpp>
 #include <neogfx/gui/widget/i_widget.hpp>
 #include <neogfx/gui/layout/layout.hpp>
 #include <neogfx/gui/layout/layout_item_cache.hpp>
 #include <neogfx/gui/layout/i_spacer.hpp>
-#include <neogfx/app/i_app.hpp>
+#include <neogfx/gui/widget/i_scrollbar.hpp>
 #include "layout.inl"
 
 namespace neogfx
 {
+    scoped_layout_items::scoped_layout_items(bool aForceRefresh) :
+        neolib::scoped_flag{ global_layout_state::instance().in_progress() },
+        iStartLayout{ !saved() || aForceRefresh }
+    {
+        if (iStartLayout)
+            global_layout_state::instance().increment_id();
+    }
+    
+    scoped_layout_items::~scoped_layout_items()
+    {
+        if (iStartLayout)
+            service<i_scrollbar_container_updater>().process();
+    }
+
     template size layout::do_minimum_size<layout::column_major<horizontal_layout>>(optional_size const& aAvailableSpace) const;
     template size layout::do_maximum_size<layout::column_major<horizontal_layout>>(optional_size const& aAvailableSpace) const;
     template void layout::do_layout_items<layout::column_major<horizontal_layout>>(const point& aPosition, const size& aSize);
@@ -446,23 +461,15 @@ namespace neogfx
         }
     }
 
-    void layout::enable()
+    void layout::enable(bool aEnable)
     {
-        if (!iEnabled)
+        if (iEnabled != aEnable)
         {
-            iEnabled = true;
+            iEnabled = aEnable;
             if (has_parent_layout())
-                parent_layout().layout_item_enabled(*this);
-        }
-    }
-
-    void layout::disable()
-    {
-        if (iEnabled)
-        {
-            iEnabled = false;
-            if (has_parent_layout())
-                parent_layout().layout_item_disabled(*this);
+                enabled() ? 
+                    parent_layout().layout_item_enabled(*this) : 
+                    parent_layout().layout_item_disabled(*this);
         }
     }
 
@@ -552,6 +559,8 @@ namespace neogfx
         {
             if (i.is_spacer())
                 continue;
+            if (!i.visible() && !ignore_visibility())
+                continue;
             if (i.effective_size_policy().horizontal_size_policy() == size_constraint::Expanding)
                 result.set_horizontal_size_policy(size_constraint::Expanding);
             else if (i.effective_size_policy().horizontal_size_policy() == size_constraint::Maximum)
@@ -596,13 +605,18 @@ namespace neogfx
 
     bool layout::device_metrics_available() const
     {
-        return has_layout_owner() && layout_owner().device_metrics_available();
+        if (iDeviceMetrics == std::nullopt)
+        {
+            if (has_layout_owner() && layout_owner().device_metrics_available())
+                iDeviceMetrics = &layout_owner().device_metrics();
+        }
+        return iDeviceMetrics != std::nullopt;
     }
 
     const i_device_metrics& layout::device_metrics() const
     {
-        if (device_metrics_available())
-            return layout_owner().device_metrics();
+        if (layout::device_metrics_available())
+            return **iDeviceMetrics;
         throw no_device_metrics();
     }
 

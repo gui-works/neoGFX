@@ -135,8 +135,8 @@ namespace neogfx
         set_padding(neogfx::padding{});
         iOuterLayout.set_padding(neogfx::padding{});
         iOuterLayout.set_spacing(size{});
-        iInnerLayout.set_padding(neogfx::padding{ 4.0, 4.0, 4.0, 4.0 });
-        iInnerLayout.set_spacing(size{ 8.0 });
+        iInnerLayout.set_padding(neogfx::padding{ 4.0_dip, 4.0_dip, 4.0_dip, 4.0_dip });
+        iInnerLayout.set_spacing(size{ 8.0_dip });
         icon_widget().set_ignore_mouse_events(false);
         size iconSize{ 24.0_dip };
         if (icon_widget().image().is_empty())
@@ -233,12 +233,12 @@ namespace neogfx
             "0000000000"
             "0000000000"
             "0000000000"
-            "0000000000"
-            "0000000000"
-            "0000000000"
-            "0000000000"
             "1111111111"
             "1111111111"
+            "0000000000"
+            "0000000000"
+            "0000000000"
+            "0000000000"
         };
         const char* sMaximizeTexturePattern
         {
@@ -309,18 +309,18 @@ namespace neogfx
             "00000000000000000000"
             "00000000000000000000"
             "00000000000000000000"
-            "00000000000000000000"
-            "00000000000000000000"
-            "00000000000000000000"
-            "00000000000000000000"
-            "00000000000000000000"
-            "00000000000000000000"
-            "00000000000000000000"
-            "00000000000000000000"
             "11111111111111111111"
             "11111111111111111111"
             "11111111111111111111"
             "11111111111111111111"
+            "00000000000000000000"
+            "00000000000000000000"
+            "00000000000000000000"
+            "00000000000000000000"
+            "00000000000000000000"
+            "00000000000000000000"
+            "00000000000000000000"
+            "00000000000000000000"
         };
         const char* sMaximizeHighDpiTexturePattern
         {

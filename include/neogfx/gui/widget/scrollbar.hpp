@@ -21,7 +21,7 @@
 
 #include <neogfx/neogfx.hpp>
 #include <neolib/core/optional.hpp>
-#include <neolib/task/timer.hpp>
+#include <neogfx/gui/widget/timer.hpp>
 #include <neogfx/core/object.hpp>
 #include <neogfx/core/property.hpp>
 #include <neogfx/core/i_transition_animator.hpp>
@@ -53,8 +53,13 @@ namespace neogfx
         bool auto_hide() const override;
         void set_auto_hide(bool aAutoHide) override;
         bool auto_hidden() const override;
+        scrollbar_zone zone() const override;
+        void push_zone() override;
+        scrollbar_zone pop_zone() override;
         value_type position() const override;
-        bool set_position(value_type aPosition, const optional_easing& aTransition = {}, double aTransitionDuration = 0.5) override;
+        value_type effective_position() const override;
+        value_type maximum_position() const override;
+        bool set_position(value_type aPosition) override;
         value_type minimum() const override;
         void set_minimum(value_type aMinimum) override;
         value_type maximum() const override;
@@ -86,15 +91,17 @@ namespace neogfx
         void track() override;
         void untrack() override;
     public:
+        bool transition_set() const noexcept override;
+        void set_transition(easing aTransition, double aTransitionDuration = 0.5, bool aOnlyWhenPaging = true) override;
+        void clear_transition() override;
+    public:
         static dimension width(scrollbar_style aStyle);
     public:
-        bool is_widget() const override;
-        const i_widget& as_widget() const override;
+        bool is_widget() const final;
+        const i_widget& as_widget() const final;
+        i_widget& as_widget();
     public:
         rect element_rect(skin_element aElement) const override;
-    private:
-        bool have_transition() const;
-        i_transition& transition() const;
     private:
         i_scrollbar_container& iContainer;
         scrollbar_type iType;
@@ -109,12 +116,13 @@ namespace neogfx
         std::optional<value_type> iLockedPosition;
         scrollbar_element iClickedElement;
         scrollbar_element iHoverElement;
-        std::optional<std::shared_ptr<neolib::callback_timer>> iTimer;
+        std::optional<std::shared_ptr<widget_timer>> iTimer;
         bool iPaused;
         point iThumbClickedPosition;
         value_type iThumbClickedValue;
+        bool iOnlyTransitionWhenPaging = true;
         optional_point iScrollTrackPosition;
-        std::optional<transition_id> iTransition;
+        std::vector<scrollbar_zone> iZoneStack;
         // properties / anchors
     public:
         define_property(property_category::interaction, value_type, Position, position)

@@ -37,6 +37,9 @@
     <Filter Include="Source Files\native\windows">
       <UniqueIdentifier>{2938ee9a-9f1d-40cf-9c80-e6542b209f8d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\3rdparty">
+      <UniqueIdentifier>{18609eac-0e1d-4541-b2c0-7861c70518b9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gfx\native\opengl_texture_manager.hpp">
@@ -475,42 +478,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\neogfx\gui\window\window_bits.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_device.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_playback_device.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_sample.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\audio_spec.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_beeper.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_track.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_beeper_sample.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\audio_track.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\audio_beeper_sample.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\audio_beeper.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\neogfx\audio\audio_playback_device.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\list_view.hpp">
@@ -1077,6 +1044,69 @@
     <ClInclude Include="..\..\..\include\neogfx\gui\layout\async_layout.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\gui\widget\timer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\support\file\gfx\svg.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\gui\widget\i_text_widget.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\audio\3rdparty\miniaudio\miniaudio.h">
+      <Filter>Source Files\3rdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_primitives.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_device.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_device.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_oscillator.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_waveform.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_waveform.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_oscillator.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_bitstream.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_bitstream.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_bitstream.ipp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_instrument.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_track.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_instrument.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_instrument_atlas.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_instrument_atlas.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\..\..\src\resources.nrc">
@@ -1293,21 +1323,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\hid\window_manager.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\audio\audio_track.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\audio\audio_beeper_sample.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\audio\audio_beeper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\audio\audio_playback_device.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\audio\audio_device.cpp">
-      <Filter>Header Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gui\widget\list_view.cpp">
       <Filter>Source Files</Filter>
@@ -1594,6 +1609,33 @@
     <ClCompile Include="..\..\..\src\gui\layout\async_layout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gui\widget\timer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\audio\3rdparty\smb\smbPitchShift.cpp">
+      <Filter>Source Files\3rdparty</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\audio\audio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\audio\audio_device.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\audio\audio_waveform.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\audio\audio_oscillator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\audio\audio_bitstream.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\audio\audio_instrument.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\audio\audio_instrument_atlas.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\src\gui\layout\flow_layout.inl">
@@ -1611,28 +1653,28 @@
     <None Include="..\..\..\include\neogfx\gfx\color.inl">
       <Filter>Header Files</Filter>
     </None>
-    <None Include="..\..\..\include\neogfx\gui\widget\scrollable_widget.tpp">
+    <None Include="..\..\..\include\neogfx\gui\widget\scrollable_widget.ipp">
       <Filter>Header Files</Filter>
     </None>
-    <None Include="..\..\..\include\neogfx\gui\widget\spin_box.tpp">
+    <None Include="..\..\..\include\neogfx\gui\widget\spin_box.ipp">
       <Filter>Header Files</Filter>
     </None>
-    <None Include="..\..\..\include\neogfx\gui\widget\slider.tpp">
+    <None Include="..\..\..\include\neogfx\gui\widget\slider.ipp">
       <Filter>Header Files</Filter>
     </None>
-    <None Include="..\..\..\include\neogfx\gui\widget\widget.tpp">
+    <None Include="..\..\..\include\neogfx\gui\widget\widget.ipp">
       <Filter>Header Files</Filter>
     </None>
-    <None Include="..\..\..\include\neogfx\gui\widget\button.tpp">
+    <None Include="..\..\..\include\neogfx\gui\widget\button.ipp">
       <Filter>Header Files</Filter>
     </None>
-    <None Include="..\..\..\include\neogfx\gfx\text\glyph.tpp">
+    <None Include="..\..\..\include\neogfx\gfx\text\glyph.ipp">
       <Filter>Header Files</Filter>
     </None>
-    <None Include="..\..\..\include\neogfx\gui\widget\tab_page_container.tpp">
+    <None Include="..\..\..\include\neogfx\gui\widget\tab_page_container.ipp">
       <Filter>Header Files</Filter>
     </None>
-    <None Include="..\..\..\include\neogfx\gui\view\view_container.tpp">
+    <None Include="..\..\..\include\neogfx\gui\view\view_container.ipp">
       <Filter>Header Files</Filter>
     </None>
   </ItemGroup>

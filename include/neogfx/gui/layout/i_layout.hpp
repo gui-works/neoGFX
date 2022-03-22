@@ -278,8 +278,7 @@ namespace neogfx
         virtual bool ignore_visibility() const = 0;
         virtual void set_ignore_visibility(bool aIgnoreVisibility, bool aUpdateLayout = true) = 0;
     public:
-        virtual void enable() = 0;
-        virtual void disable() = 0;
+        virtual void enable(bool aEnable) = 0;
         virtual bool enabled() const = 0;
         virtual void layout_items(const point& aPosition, const size& aSize) = 0;
         virtual bool invalidated() const = 0;
@@ -365,6 +364,14 @@ namespace neogfx
             }
             return false;
         }
+        void enable()
+        {
+            enable(true);
+        }
+        void disable()
+        {
+            enable(false);
+        }
     };
 
     inline size total_child_weight(const i_layout& aLayout)
@@ -438,14 +445,9 @@ namespace neogfx
     class scoped_layout_items : private neolib::scoped_flag
     {
     public:
-        scoped_layout_items(bool aForceRefresh = false) : 
-            neolib::scoped_flag{ global_layout_state::instance().in_progress() }
-        {
-            if (!saved() || aForceRefresh)
-                global_layout_state::instance().increment_id();
-        }
-        ~scoped_layout_items()
-        {
-        }
+        scoped_layout_items(bool aForceRefresh = false);
+        ~scoped_layout_items();
+    private:
+        bool iStartLayout;
     };
 }

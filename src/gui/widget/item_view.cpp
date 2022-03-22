@@ -30,19 +30,19 @@
 namespace neogfx
 {
     item_view::item_view(frame_style aFrameStyle, neogfx::scrollbar_style aScrollbarStyle) :
-        base_type{ aScrollbarStyle, aFrameStyle }, iHotTracking{ false }, iIgnoreNextMouseMove{ false }, iBeginningEdit{ false }, iEndingEdit{ false }, iDefaultTransitionDuration{ 0.5 }
+        base_type{ aScrollbarStyle, aFrameStyle }, iHotTracking{ false }, iIgnoreNextMouseMove{ false }, iBeginningEdit{ false }, iEndingEdit{ false }
     {
         init();
     }
 
     item_view::item_view(i_widget& aParent, frame_style aFrameStyle, neogfx::scrollbar_style aScrollbarStyle) :
-        base_type{ aParent, aScrollbarStyle, aFrameStyle }, iHotTracking{ false }, iIgnoreNextMouseMove{ false }, iBeginningEdit{ false }, iEndingEdit{ false }, iDefaultTransitionDuration{ 0.5 }
+        base_type{ aParent, aScrollbarStyle, aFrameStyle }, iHotTracking{ false }, iIgnoreNextMouseMove{ false }, iBeginningEdit{ false }, iEndingEdit{ false }
     {
         init();
     }
 
     item_view::item_view(i_layout& aLayout, frame_style aFrameStyle, neogfx::scrollbar_style aScrollbarStyle) :
-        base_type{ aLayout, aScrollbarStyle, aFrameStyle }, iHotTracking{ false }, iIgnoreNextMouseMove{ false }, iBeginningEdit{ false }, iEndingEdit{ false }, iDefaultTransitionDuration{ 0.5 }
+        base_type{ aLayout, aScrollbarStyle, aFrameStyle }, iHotTracking{ false }, iIgnoreNextMouseMove{ false }, iBeginningEdit{ false }, iEndingEdit{ false }
     {
         init();
     }
@@ -150,6 +150,8 @@ namespace neogfx
             iPresentationModelSink += presentation_model().item_expanded([this](item_presentation_model_index const& aItemIndex) { invalidate_item(aItemIndex); });
             iPresentationModelSink += presentation_model().item_collapsed([this](item_presentation_model_index const& aItemIndex) { invalidate_item(aItemIndex); });
             iPresentationModelSink += presentation_model().item_toggled([this](item_presentation_model_index const& aItemIndex) { update(cell_rect(aItemIndex, cell_part::Background)); });
+            iPresentationModelSink += presentation_model().items_updating([this]() { /* todo: hourglass */ });
+            iPresentationModelSink += presentation_model().items_updated([this]() { items_updated(); });
             iPresentationModelSink += presentation_model().items_sorting([this]() { items_sorting(); });
             iPresentationModelSink += presentation_model().items_sorted([this]() { items_sorted(); });
             iPresentationModelSink += presentation_model().items_filtering([this]() { items_filtering(); });
@@ -209,22 +211,6 @@ namespace neogfx
         update();
     }
 
-    const optional_easing& item_view::default_transition() const
-    {
-        return iDefaultTransition;
-    }
-
-    double item_view::default_transition_duration() const
-    {
-        return iDefaultTransitionDuration;
-    }
-
-    void item_view::set_default_transition(const optional_easing& aTransition, double aTransitionDuration)
-    {
-        iDefaultTransition = aTransition;
-        iDefaultTransitionDuration = aTransitionDuration;
-    }
-
     std::pair<item_presentation_model_index::value_type, coordinate> item_view::first_visible_item(i_graphics_context& aGc) const
     {
         return presentation_model().item_at(vertical_scrollbar().position(), aGc);
@@ -267,6 +253,8 @@ namespace neogfx
     void item_view::paint(i_graphics_context& aGc) const
     {
         base_type::paint(aGc);
+        if (presentation_model().updating())
+            return;
         auto first = first_visible_item(aGc);
         bool finished = false;
         rect clipRect = default_clip_rect().intersection(item_display_rect());
@@ -284,13 +272,14 @@ namespace neogfx
                 if (cellRect.bottom() < clipRect.y)
                     continue;
                 optional_color cellBackgroundColor = presentation_model().cell_color(itemIndex, color_role::Background);
-                if (!cellBackgroundColor)
+                bool const cellBackgroundSpecified = !!cellBackgroundColor;
+                if (!cellBackgroundSpecified)
                     cellBackgroundColor = selection_model().is_selected(itemIndex) ? 
                         service<i_app>().current_style().palette().color(color_role::Selection).to_hsv().with_saturation(0.2).to_rgb<color>().with_alpha(has_focus() ? 1.0 : 0.5) : 
                         service<i_app>().current_style().palette().color(presentation_model().alternating_row_color() ? row % 2 == 0 ? color_role::Base : color_role::AlternateBase : color_role::Base);
                 optional_color textColor = presentation_model().cell_color(itemIndex, color_role::Text);
                 if (!textColor)
-                    textColor = service<i_app>().current_style().palette().color(selection_model().is_selected(itemIndex) ? color_role::SelectedText : color_role::Text);
+                    textColor = service<i_app>().current_style().palette().color(!cellBackgroundSpecified && selection_model().is_selected(itemIndex) ? color_role::SelectedText : color_role::Text);
                 rect cellBackgroundRect = cell_rect(itemIndex, aGc, cell_part::Background);
                 {
                     scoped_scissor scissor(aGc, clipRect.intersection(cellBackgroundRect));
@@ -453,7 +442,7 @@ namespace neogfx
                     {
                         if (!drag_drop_enabled())
                         {
-                            iMouseTracker.emplace(service<i_async_task>(), [this, aKeyModifiers](neolib::callback_timer& aTimer)
+                            iMouseTracker.emplace(*this, [this, aKeyModifiers](widget_timer& aTimer)
                             {
                                 aTimer.again();
                                 auto const pos = mouse_position();
@@ -482,7 +471,6 @@ namespace neogfx
             {
                 if (!selection_model().is_selected(*item))
                     select(*item, aKeyModifiers);
-                CellContextMenu.trigger(*item);
             }
         }
     }
@@ -520,7 +508,9 @@ namespace neogfx
                     actioned = true;
                 }
                 if (model().is_tree() && !actioned)
-                    presentation_model().toggle_expanded(*item);
+                    actioned = presentation_model().toggle_expanded(*item);
+                if (!actioned)
+                    CellAction.trigger(*item);
             }
         }
     }
@@ -545,6 +535,12 @@ namespace neogfx
             iClickedCheckBox = std::nullopt;
             if (doCheck)
                 presentation_model().toggle_check(*item);
+        }
+        if (aButton == mouse_button::Right)
+        {
+            auto item = item_at(aPosition);
+            if (item != std::nullopt)
+                CellContextMenu.trigger(*item);
         }
     }
 
@@ -723,11 +719,10 @@ namespace neogfx
 
     void item_view::update_scrollbar_visibility()
     {
-        bool wasVisible = has_presentation_model() && has_selection_model() &&
-            selection_model().has_current_index() && is_visible(selection_model().current_index());
+        bool wasVisible = iVisibleItem && is_valid(iVisibleItem.value()) && is_visible(iVisibleItem.value());
         base_type::update_scrollbar_visibility();
         if (wasVisible)
-            make_visible(selection_model().current_index());
+            make_visible(iVisibleItem.value());
     }
 
     void item_view::update_scrollbar_visibility(usv_stage_e aStage)
@@ -771,6 +766,11 @@ namespace neogfx
         }
     }
 
+    bool item_view::use_scrollbar_container_updater() const
+    {
+        return false;
+    }
+
     void item_view::column_info_changed(item_model_index::value_type)
     {
         update_scrollbar_visibility();
@@ -812,6 +812,12 @@ namespace neogfx
         invalidate_item(aItemIndex);
     }
 
+    void item_view::items_updated()
+    {
+        update_scrollbar_visibility();
+        update();
+    }
+
     void item_view::items_sorting()
     {
         if (selection_model().has_current_index())
@@ -836,8 +842,7 @@ namespace neogfx
     {
         if (presentation_model().rows() != 0)
             select(item_presentation_model_index{});
-        update_scrollbar_visibility();
-        update();
+        items_updated();
     }
 
     void item_view::presentation_model_added(i_item_presentation_model&)
@@ -903,16 +908,20 @@ namespace neogfx
         iHotTracking = false;
     }
 
+    bool item_view::is_valid(item_presentation_model_index const& aItemIndex) const
+    {
+        return aItemIndex.row() < presentation_model().rows() && aItemIndex.column() < presentation_model().columns();
+    }
+
     bool item_view::is_visible(item_presentation_model_index const& aItemIndex) const
     {
         return item_display_rect().contains(cell_rect(aItemIndex, cell_part::Background));
     }
 
-    bool item_view::make_visible(item_presentation_model_index const& aItemIndex, const optional_easing& aTransition, const std::optional<double>& aTransitionDuration)
+    bool item_view::make_visible(item_presentation_model_index const& aItemIndex)
     {
+        iVisibleItem = aItemIndex;
         bool changed = false;
-        auto const& transition = (aTransition == std::nullopt ? default_transition() : aTransition);
-        auto const transitionDuration = (aTransitionDuration == std::nullopt ? default_transition_duration() : *aTransitionDuration);
         graphics_context gc{ *this, graphics_context::type::Unattached };
         auto const& cellRect = cell_rect(aItemIndex, gc, cell_part::Background);
         auto const& displayRect = item_display_rect();
@@ -920,16 +929,16 @@ namespace neogfx
         if (intersectRect.height() < cellRect.height())
         {
             if (cellRect.top() < displayRect.top())
-                changed = vertical_scrollbar().set_position(vertical_scrollbar().position() + (cellRect.top() - displayRect.top()), transition, transitionDuration) || changed;
+                changed = vertical_scrollbar().set_position(vertical_scrollbar().position() + (cellRect.top() - displayRect.top())) || changed;
             else if (cellRect.bottom() > displayRect.bottom() && cellRect.height() <= displayRect.height())
-                changed = vertical_scrollbar().set_position(vertical_scrollbar().position() + (cellRect.bottom() - displayRect.bottom()), transition, transitionDuration) || changed;
+                changed = vertical_scrollbar().set_position(vertical_scrollbar().position() + (cellRect.bottom() - displayRect.bottom())) || changed;
         }
         if (intersectRect.width() < cellRect.width())
         {
             if (cellRect.left() < displayRect.left())
-                changed = horizontal_scrollbar().set_position(horizontal_scrollbar().position() + (cellRect.left() - displayRect.left()), transition, transitionDuration) || changed;
+                changed = horizontal_scrollbar().set_position(horizontal_scrollbar().position() + (cellRect.left() - displayRect.left())) || changed;
             else if (cellRect.right() > displayRect.right() && cellRect.width() <= displayRect.width())
-                changed = horizontal_scrollbar().set_position(horizontal_scrollbar().position() + (cellRect.right() - displayRect.right()), transition, transitionDuration) || changed;
+                changed = horizontal_scrollbar().set_position(horizontal_scrollbar().position() + (cellRect.right() - displayRect.right())) || changed;
         }
         return changed;
     }
@@ -1172,9 +1181,8 @@ namespace neogfx
     {
         if (aUpdateReason == header_view_update_reason::FullUpdate)
         {
-            bool wasVisible = selection_model().has_current_index() && is_visible(selection_model().current_index());
-            if (wasVisible)
-                make_visible(selection_model().current_index());
+            if (iVisibleItem && is_valid(iVisibleItem.value()) && is_visible(iVisibleItem.value()))
+                make_visible(iVisibleItem.value());
             layout_items();
         }
         else

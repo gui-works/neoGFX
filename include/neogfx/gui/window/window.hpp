@@ -33,9 +33,9 @@ namespace neogfx
 {
     class i_window_manager;
 
-    class window : public decorated<framed_scrollable_widget, i_window>
+    class window : public decorated<scrollable_widget<framed_widget<widget<i_window>>>>
     {
-        typedef decorated<framed_scrollable_widget, i_window> base_type;
+        typedef decorated<scrollable_widget<framed_widget<widget<i_window>>>> base_type;
     public:
         define_declared_event(Window, window_event, neogfx::window_event&)
         define_declared_event(DismissingChildren, dismissing_children, const i_widget*)
@@ -66,22 +66,22 @@ namespace neogfx
         const i_window_manager& window_manager() const override;
         i_window_manager& window_manager() override;
     public:
-        bool is_surface() const override;
-        bool has_surface() const override;
-        const i_surface_window& surface() const override;
-        i_surface_window& surface() override;
-        bool has_native_surface() const override;
-        const i_native_surface& native_surface() const override;
-        i_native_surface& native_surface() override;
-        bool has_native_window() const override;
-        const i_native_window& native_window() const override;
-        i_native_window& native_window() override;
+        bool is_surface() const final;
+        bool has_surface() const final;
+        const i_surface_window& surface() const final;
+        i_surface_window& surface() final;
+        bool has_native_surface() const final;
+        const i_native_surface& native_surface() const final;
+        i_native_surface& native_surface() final;
+        bool has_native_window() const final;
+        const i_native_window& native_window() const final;
+        i_native_window& native_window() final;
     public:
-        bool has_parent_window() const override;
-        const i_window& parent_window() const override;
-        i_window& parent_window()  override;
-        bool is_parent_of(const i_window& aChildWindow) const override;
-        bool is_owner_of(const i_window& aChildWindow) const override;
+        bool has_parent_window() const final;
+        const i_window& parent_window() const final;
+        i_window& parent_window() final;
+        bool is_parent_of(const i_window& aChildWindow) const final;
+        bool is_owner_of(const i_window& aChildWindow) const final;
         const i_window& ultimate_ancestor() const override;
         i_window& ultimate_ancestor() override;
     public:
@@ -96,9 +96,6 @@ namespace neogfx
     public:
         color frame_color() const override;
     public:
-        bool is_root() const override;
-        const i_window& root() const override;
-        i_window& root() override;
         void set_parent(i_widget& aParent) override;
         bool is_managing_layout() const override;
         void layout_items_completed() override;

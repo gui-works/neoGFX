@@ -20,7 +20,7 @@
 #pragma once
 
 #include <neogfx/neogfx.hpp>
-#include <neolib/task/timer.hpp>
+#include <neogfx/gui/widget/timer.hpp>
 #include <neogfx/gfx/color.hpp>
 #include <neogfx/gfx/texture.hpp>
 #include <neogfx/gui/layout/horizontal_layout.hpp>
@@ -44,6 +44,9 @@ namespace neogfx
     public:
         i_string const& title() const override;
         void set_title(i_string const& aTitle) override;
+    public:
+        const text_widget& title_widget() const override;
+        text_widget& title_widget() override;
     protected:
         size minimum_size(optional_size const& aAvailableSpace = {}) const override;
     protected:
@@ -58,7 +61,7 @@ namespace neogfx
         void update_state();
     private:
         i_standard_layout_container& iContainer;
-        neolib::callback_timer iUpdater;
+        widget_timer iUpdater;
         horizontal_layout iLayout;
         text_widget iTitle;
         push_button iPinButton;

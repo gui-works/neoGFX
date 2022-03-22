@@ -29,6 +29,7 @@
 #include <neogfx/core/object.hpp>
 #include <neogfx/gfx/i_graphics_context.hpp>
 #include <neogfx/app/i_app.hpp>
+#include <neogfx/app/i_drag_drop.hpp>
 #include <neogfx/gui/widget/spin_box.hpp>
 #include <neogfx/gui/widget/item_model.hpp>
 #include <neogfx/gui/widget/i_item_presentation_model.hpp>
@@ -56,6 +57,8 @@ namespace neogfx
         define_declared_event(ItemChecked, item_checked, item_presentation_model_index const&)
         define_declared_event(ItemUnchecked, item_unchecked, item_presentation_model_index const&)
         define_declared_event(ItemIndeterminate, item_indeterminate, item_presentation_model_index const&)
+        define_declared_event(ItemsUpdating, items_updating)
+        define_declared_event(ItemsUpdated, items_updated)
         define_declared_event(ItemsSorting, items_sorting)
         define_declared_event(ItemsSorted, items_sorted)
         define_declared_event(ItemsFiltering, items_filtering)
@@ -68,14 +71,14 @@ namespace neogfx
     public:
         using typename base_type::sort_direction;
         using typename base_type::optional_sort_direction;
-        using typename base_type::sort;
-        using typename base_type::optional_sort;
+        using typename base_type::sort_by_param;
+        using typename base_type::optional_sort_by_param;
         using typename base_type::filter_search_key;
         using typename base_type::filter_search_type;
         using typename base_type::case_sensitivity;
     private:
         typedef ItemModel item_model_type;
-        typedef typename item_model_type::container_traits::template rebind<item_presentation_model_index::row_type, cell_meta_type, true>::other container_traits;
+        typedef typename item_model_type::container_traits::template rebind<item_model_index::row_type, cell_meta_type, true>::other container_traits;
         typedef typename container_traits::row_cell_array row_cell_array;
         typedef typename container_traits::container_type container_type;
         typedef typename container_traits::const_skip_iterator const_iterator;
@@ -105,11 +108,11 @@ namespace neogfx
         using typename base_type::bad_index;
         using typename base_type::no_mapped_row;
     public:
-        basic_item_presentation_model(bool aSortable = false) : iItemModel{ nullptr }, iSortable{ aSortable }, iAlternatingRowColor{ false }, iInitializing{ false }, iFiltering{ false }
+        basic_item_presentation_model(bool aSortable = false) : iItemModel{ nullptr }, iSortable{ aSortable }, iAlternatingRowColor{ false }
         {
             init();
         }
-        basic_item_presentation_model(i_item_model& aItemModel, bool aSortable = false) : iItemModel{ nullptr }, iSortable{ aSortable }, iAlternatingRowColor{ false }, iInitializing{ false }, iFiltering{ false }
+        basic_item_presentation_model(i_item_model& aItemModel, bool aSortable = false) : iItemModel{ nullptr }, iSortable{ aSortable }, iAlternatingRowColor{ false }
         {
             init();
             set_item_model(aItemModel);
@@ -121,9 +124,24 @@ namespace neogfx
             iItemModelSink.clear();
         }
     public:
-        bool initializing() const override
+        bool updating() const override
         {
-            return iInitializing;
+            return iUpdating != 0u;
+        }
+        void begin_update() override
+        {
+            if (++iUpdating == 1)
+                ItemsUpdating.trigger();
+        }
+        void end_update() override
+        {
+            if (--iUpdating == 0)
+            {
+                reset_maps();
+                reset_meta();
+                reset_sort();
+                ItemsUpdated.trigger();
+            }
         }
         bool has_item_model() const override
         {
@@ -139,11 +157,10 @@ namespace neogfx
         {
             if (iItemModel != &aItemModel)
             {
-                auto reset_model = [this](bool aHardReset = true)
+                auto reset_model = [this]()
                 {
-                    if (aHardReset)
                     {
-                        neolib::scoped_flag sf{ iInitializing };
+                        scoped_item_update siu{ *this };
                         iColumns.clear();
                         for (item_model_index::column_type col = 0; col < item_model().columns(); ++col)
                             iColumns.emplace_back(col);
@@ -151,9 +168,7 @@ namespace neogfx
                         for (item_model_index::row_type row = 0; row < item_model().rows(); ++row)
                             item_added(item_model_index{ row });
                     }
-                    reset_maps();
-                    reset_meta();
-                    reset_sort();
+
                     ItemModelChanged.trigger(item_model());
                 };
                 iItemModelSink.clear();
@@ -162,15 +177,6 @@ namespace neogfx
                 iItemModelSink += item_model().item_added([this](const item_model_index& aItemIndex) { item_added(aItemIndex); });
                 iItemModelSink += item_model().item_changed([this](const item_model_index& aItemIndex) { item_changed(aItemIndex); });
                 iItemModelSink += item_model().item_removed([this](const item_model_index& aItemIndex) { item_removed(aItemIndex); });
-                iItemModelSink += item_model().updating([this]()
-                {
-                    iInitializing = true;
-                });
-                iItemModelSink += item_model().updated([this, reset_model]()
-                {
-                    iInitializing = false;
-                    reset_model(false);
-                });
                 iItemModelSink += item_model().cleared([this]()
                 {  
                     iRows.clear();
@@ -263,8 +269,13 @@ namespace neogfx
         {
             if (column(aColumnIndex).headingText != std::nullopt)
                 return *column(aColumnIndex).headingText;
-            else
+            else if (has_model_column(aColumnIndex))
                 return item_model().column_name(model_column(aColumnIndex));
+            else
+            {
+                static std::string const none;
+                return none;
+            }
         }
         size column_heading_extents(item_presentation_model_index::column_type aColumnIndex, i_graphics_context const& aGc) const override
         {
@@ -314,6 +325,30 @@ namespace neogfx
                 ColumnInfoChanged.trigger(aColumnIndex);
             }
         }
+        bool expand(item_presentation_model_index const& aIndex) override
+        {
+            if constexpr (container_traits::is_tree)
+            {
+                if (!cell_meta(aIndex.with_column(0)).expanded)
+                {
+                    toggle_expanded(aIndex.with_column(0));
+                    return true;
+                }
+            }
+            return false;
+        }
+        bool collapse(item_presentation_model_index const& aIndex) override
+        {
+            if constexpr (container_traits::is_tree)
+            {
+                if (cell_meta(aIndex.with_column(0)).expanded)
+                {
+                    toggle_expanded(aIndex.with_column(0));
+                    return true;
+                }
+            }
+            return false;
+        }
         bool toggle_expanded(item_presentation_model_index const& aIndex) override
         {
             if constexpr (container_traits::is_tree)
@@ -330,12 +365,24 @@ namespace neogfx
                     std::next(begin(), aIndex.row()).unskip_children();
                 else
                     std::next(begin(), aIndex.row()).skip_children();
-                reset_maps();
+                reset_row_map();
                 reset_meta();
                 if (cell_meta(indexFirstColumn).expanded)
                     ItemExpanded.trigger(aIndex);
                 else
                     ItemCollapsed.trigger(aIndex);
+                return true;
+            }
+            else
+                return false;
+        }
+        bool expand_to(item_model_index const& aIndex) override
+        {
+            if constexpr (container_traits::is_tree)
+            {
+                if (!has_item_model_index(aIndex) && item_model().has_parent(aIndex))
+                    expand_to(item_model().parent(aIndex));
+                expand(from_item_model_index(aIndex));
                 return true;
             }
             else
@@ -815,6 +862,18 @@ namespace neogfx
             }
         }
     public:
+        void sort(i_item_sort_predicate const& aPredicate) override
+        {
+            iSortOrder.clear();
+            ItemsSorting.trigger();
+            if constexpr (container_traits::is_flat)
+                std::sort(iRows.begin(), iRows.end(), [&](auto const& lhs, auto const& rhs) { return aPredicate.compare(lhs.value, rhs.value); });
+            else
+                iRows.sort([&](auto const& lhs, auto const& rhs) { return aPredicate.compare(lhs.value, rhs.value); });
+            reset_row_map();
+            reset_position_meta(0);
+            ItemsSorted.trigger();
+        }
         bool sortable() const override
         {
             return iSortable;
@@ -823,16 +882,16 @@ namespace neogfx
         {
             iSortable = aSortable;
         }
-        optional_sort sorting_by() const override
+        optional_sort_by_param sorting_by() const override
         {
             if (!iSortOrder.empty())
                 return iSortOrder.front();
             else
-                return optional_sort{};
+                return optional_sort_by_param{};
         }
         void sort_by(item_presentation_model_index::column_type aColumnIndex, const optional_sort_direction& aSortDirection = optional_sort_direction{}) override
         {
-            iSortOrder.push_front(sort{ aColumnIndex, aSortDirection == std::nullopt ? sort_direction::Ascending : *aSortDirection });
+            iSortOrder.push_front(sort_by_param{ aColumnIndex, aSortDirection == std::nullopt ? sort_direction::Ascending : *aSortDirection });
             for (auto i = std::next(iSortOrder.begin()); i != iSortOrder.end(); ++i)
             {
                 if (i->first == aColumnIndex)
@@ -964,53 +1023,53 @@ namespace neogfx
                 std::sort(iRows.begin(), iRows.end(), sortPredicate);
             else
                 iRows.sort(sortPredicate);
-            reset_maps();
+            reset_row_map();
             reset_position_meta(0);
             ItemsSorted.trigger();
         }
         void execute_filter()
         {
-            neolib::scoped_flag sf1{ iInitializing };
-            neolib::scoped_flag sf2{ iFiltering };
-            ItemsFiltering.trigger();
-            iRows.clear();
-            for (item_model_index::row_type row = 0; row < item_model().rows(); ++row)
             {
-                bool matches = true;
-                for (auto const& filter : iFilters)
+                scoped_item_update siu{ *this };
+                neolib::scoped_flag sf2{ iFiltering };
+                ItemsFiltering.trigger();
+                iRows.clear();
+                for (item_model_index::row_type row = 0; row < item_model().rows(); ++row)
                 {
-                    auto const& origValue = item_model().cell_data(item_model_index{ row, model_column(std::get<0>(filter)) }).to_string();
-                    auto const& value = (std::get<3>(filter) == case_sensitivity::CaseSensitive ? origValue : boost::to_upper_copy<std::string>(origValue));
-                    auto const& origKey = std::get<1>(filter);
-                    auto const& key = (std::get<3>(filter) == case_sensitivity::CaseSensitive ? origKey : boost::to_upper_copy<std::string>(origKey));
-                    if (key.empty())
-                        continue;
-                    switch (std::get<2>(filter))
+                    bool matches = true;
+                    for (auto const& filter : iFilters)
                     {
-                    case filter_search_type::Prefix:
-                        if (value.size() < key.size() || value.substr(0, key.size()) != key)
-                            matches = false;
-                        break;
-                    case filter_search_type::Glob:
-                        // todo
-                        break;
-                    case filter_search_type::Regex:
-                        // todo
-                        break;
+                        auto const& origValue = item_model().cell_data(item_model_index{ row, model_column(std::get<0>(filter)) }).to_string();
+                        auto const& value = (std::get<3>(filter) == case_sensitivity::CaseSensitive ? origValue : boost::to_upper_copy<std::string>(origValue));
+                        auto const& origKey = std::get<1>(filter);
+                        auto const& key = (std::get<3>(filter) == case_sensitivity::CaseSensitive ? origKey : boost::to_upper_copy<std::string>(origKey));
+                        if (key.empty())
+                            continue;
+                        switch (std::get<2>(filter))
+                        {
+                        case filter_search_type::Prefix:
+                            if (value.size() < key.size() || value.substr(0, key.size()) != key)
+                                matches = false;
+                            break;
+                        case filter_search_type::Glob:
+                            // todo
+                            break;
+                        case filter_search_type::Regex:
+                            // todo
+                            break;
+                        }
                     }
+                    if (matches)
+                        item_added(item_model_index{ row });
                 }
-                if (matches)
-                    item_added(item_model_index{ row });
             }
-            reset_maps();
-            reset_cell_meta();
-            reset_position_meta(0);
             ItemsFiltered.trigger();
             execute_sort();
         }
     private:
         void item_model_column_info_changed(item_model_index::column_type aColumnIndex)
         {
+            reset_column_map(false);
             if (has_item_model_index(item_model_index{ 0, aColumnIndex }))
             {
                 auto const index = from_item_model_index(item_model_index{ 0, aColumnIndex });
@@ -1044,12 +1103,12 @@ namespace neogfx
                 }
             }
 
-            if (!iInitializing || container_traits::is_tree)
-                reset_maps(aItemIndex);
+            if (!updating() || container_traits::is_tree)
+                reset_row_map(aItemIndex);
 
-            if (!iInitializing)
+            if (!updating())
             {
-                reset_meta();
+                reset_meta(); // todo: optimize
                 execute_sort();
                 ItemAdded.trigger(from_item_model_index(aItemIndex, true));
             }
@@ -1058,10 +1117,10 @@ namespace neogfx
         {
             if (!has_item_model_index(aItemIndex))
                 return;
-            if (!iInitializing)
+            if (!updating())
             {
-                reset_maps();
-                reset_meta();
+                reset_row_map();
+                reset_meta(); // todo: optimize
                 execute_sort();
                 auto& cellMeta = cell_meta(from_item_model_index(aItemIndex));
                 cellMeta.text = std::nullopt;
@@ -1074,21 +1133,39 @@ namespace neogfx
         {
             if (!has_item_model_index(aItemIndex))
                 return;
-            if (!iInitializing)
+            if (!updating())
                 ItemRemoved.trigger(from_item_model_index(aItemIndex));
-            iRows.erase(std::next(begin(), from_item_model_index(aItemIndex).row()));
+            auto const mappedRow = from_item_model_index(aItemIndex).row();
+            iRows.erase(std::next(begin(), mappedRow));
             for (auto& row : iRows)
                 if (row.value >= aItemIndex.row())
                     --row.value;
-            reset_maps(aItemIndex);
-            reset_position_meta(0);
+            if (iRowMap[aItemIndex.row()])
+                for (auto& row : iRowMap)
+                    if (row && *row >= mappedRow)
+                        --*row;
+            iRowMap.erase(std::next(iRowMap.begin(), aItemIndex.row()));
+            if (!updating())
+                reset_meta(); // todo: optimize
         }
     private:
         void reset_maps(const item_model_index& aFrom = {}) const
         {
+            reset_row_map(aFrom);
+            reset_column_map();
+        }
+        void reset_row_map(const item_model_index& aFrom = {}) const
+        {
             if (aFrom.row() < iRowMap.size() && (iRowMapDirtyFrom == std::nullopt || *iRowMapDirtyFrom > aFrom.row()))
                 iRowMapDirtyFrom = aFrom.row();
-            iColumnMap.clear();
+        }
+        void reset_column_map(bool aClear = true) const
+        {
+            if (aClear)
+                iColumnMap.clear();
+            if (has_item_model())
+                for (item_model_index::column_type col = 0; col < item_model().columns(); ++col)
+                    mapped_column(col);
         }
         item_presentation_model_index::row_type mapped_row(item_model_index::row_type aRowIndex) const
         {
@@ -1125,16 +1202,32 @@ namespace neogfx
                         mapCol = col;
                 if (!mapCol)
                 {
-                    auto const newColumn = columns();
+                    auto newColumn = columns();
+                    for (item_presentation_model_index::column_type col = 0; col < columns(); ++col)
+                        if (iColumns[col].modelColumn == std::nullopt)
+                        {
+                            newColumn = col;
+                            break;
+                        }
                     column(newColumn).modelColumn = aColumnIndex;
                     mapCol = newColumn;
                 }
             }
             return *mapCol;
         }
+        bool has_model_column(item_presentation_model_index::column_type aColumnIndex) const
+        {
+            auto const& col = column(aColumnIndex);
+            if (col.modelColumn)
+                reset_column_map(false);
+            return col.modelColumn.has_value();
+        }
         item_model_index::column_type model_column(item_presentation_model_index::column_type aColumnIndex) const
         {
             auto const& col = column(aColumnIndex);
+            if (col.modelColumn)
+                return *col.modelColumn;
+            reset_column_map(false);
             if (col.modelColumn)
                 return *col.modelColumn;
             throw bad_index();
@@ -1262,12 +1355,11 @@ namespace neogfx
         mutable std::optional<i_scrollbar::value_type> iTotalHeight;
         mutable neolib::segmented_array<optional_position, 256> iPositions;
         bool iAlternatingRowColor;
-        std::deque<sort> iSortOrder;
+        std::deque<sort_by_param> iSortOrder;
         std::vector<filter> iFilters;
         sink iSink;
-        bool iInitializing;
-        bool iFiltering;
-        bool iModelUpdating;
+        std::uint32_t iUpdating = 0u;
+        bool iFiltering = false;
     };
 
     typedef basic_item_presentation_model<item_model> item_presentation_model;

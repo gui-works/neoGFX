@@ -32,6 +32,9 @@ using namespace boost::multiprecision;
 #include <neolib/core/variant.hpp>
 #include <neolib/core/any.hpp>
 #include <neolib/core/enum.hpp>
+#include <neolib/core/vector.hpp>
+#include <neolib/core/deque.hpp>
+#include <neolib/core/list.hpp>
 #include <neolib/core/string.hpp>
 #include <neolib/core/string_utils.hpp>
 #include <neolib/task/i_async_task.hpp>
@@ -84,6 +87,15 @@ namespace neogfx
     using neolib::enum_t;
     using neolib::enum_to_string;
 
+    using neolib::i_vector;
+    using neolib::vector;
+
+    using neolib::i_deque;
+    using neolib::deque;
+
+    using neolib::i_list;
+    using neolib::list;
+
     using neolib::i_string;
     using neolib::string;
     using neolib::to_string;
@@ -107,7 +119,7 @@ namespace neogfx
     using neolib::logger::endl;
     using neolib::logger::flush;
 
-    // convert strings with different traits and/or character types to std::string
+    // convert strings with different traits and/or character types to neolib::string
     template <typename CharT, typename Traits, typename Allocator>
     inline const string to_string(const std::basic_string<CharT, Traits, Allocator>& aString)
     {
@@ -115,12 +127,13 @@ namespace neogfx
         return string{ reinterpret_cast<const char*>(aString.c_str()), aString.size() };
     }
 
-    // convert character array to std::string
+    // convert character array (primarily for UTF-8 string literals) to neolib::string
     template <typename CharT, std::size_t Size>
     inline const string to_string(const CharT (&aString)[Size])
     {
         static_assert(sizeof(CharT) == sizeof(char));
-        return string{ reinterpret_cast<const char*>(&aString[0]), Size };
+        auto const correctedSize = (aString[Size - 1] == '\0' ? Size - 1 : Size);
+        return correctedSize > 0 ? string{ reinterpret_cast<const char*>(&aString[0]), correctedSize } : string{};
     }
 
     struct not_yet_implemented : std::runtime_error

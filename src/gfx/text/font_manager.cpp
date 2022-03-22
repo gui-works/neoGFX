@@ -29,13 +29,13 @@
 #include FT_BITMAP_H
 #ifdef u8
 #undef u8
-#include <hb.h>
-#include <hb-ft.h>
-#include <hb-ucdn\ucdn.h>
+#include <harfbuzz\hb.h>
+#include <harfbuzz\hb-ft.h>
+#include <harfbuzz\hb-ucdn\ucdn.h>
 #define u8
 #else
-#include <hb.h>
-#include <hb-ft.h>
+#include <harfbuzz\hb.h>
+#include <harfbuzz\hb-ot.h>
 #endif
 #ifdef _WIN32
 #include <Shlobj.h>
@@ -197,15 +197,13 @@ namespace neogfx
         public:
             glyphs(const i_graphics_context& aParent, const font& aFont, const glyph_text_factory::glyph_run& aGlyphRun) :
                 iParent{ aParent },
-                iFont{ static_cast<native_font_face::hb_handle*>(aFont.native_font_face().aux_handle())->font },
+                iFont{ static_cast<font_face_handle*>(aFont.native_font_face().handle())->harfbuzzFont },
                 iGlyphRun{ aGlyphRun },
-                iBuf{ static_cast<native_font_face::hb_handle*>(aFont.native_font_face().aux_handle())->buf },
+                iBuf{ static_cast<font_face_handle*>(aFont.native_font_face().handle())->harfbuzzBuf },
                 iGlyphCount{ 0u },
                 iGlyphInfo{ nullptr },
                 iGlyphPos{ nullptr }
             {
-                scoped_kerning sk{ aFont.kerning() };
-                hb_ft_font_set_load_flags(iFont, aParent.is_subpixel_rendering_on() ? FT_LOAD_TARGET_LCD : FT_LOAD_TARGET_NORMAL);
                 hb_buffer_set_direction(iBuf, std::get<2>(aGlyphRun) == text_direction::RTL ? HB_DIRECTION_RTL : HB_DIRECTION_LTR);
                 hb_buffer_set_script(iBuf, std::get<4>(aGlyphRun));
                 std::vector<uint32_t> reversed;
@@ -242,6 +240,7 @@ namespace neogfx
                     }
                     hb_buffer_add_utf32(iBuf, &*reversed.begin(), static_cast<int>(reversed.size()), 0u, static_cast<int>(reversed.size()));
                 }
+                scoped_kerning sk{ aFont.kerning() };
                 hb_shape(iFont, iBuf, NULL, 0);
                 unsigned int glyphCount = 0;
                 iGlyphInfo = hb_buffer_get_glyph_infos(iBuf, &glyphCount);
@@ -441,13 +440,14 @@ namespace neogfx
         runs.clear();
         auto const& emojiAtlas = service<i_font_manager>().emoji_atlas();
         text_category previousCategory = get_text_category(emojiAtlas, codePoints, codePoints + codePointCount);
-        if (aContext.mnemonic_set() && codePoints[0] == static_cast<char32_t>(aContext.mnemonic()))
+        if (aContext.mnemonic_set() && codePoints[0] == static_cast<char32_t>(aContext.mnemonic()) && 
+            (codePointCount == 1 || codePoints[1] != static_cast<char32_t>(aContext.mnemonic())))
             previousCategory = text_category::Mnemonic;
         text_direction previousDirection = (previousCategory != text_category::RTL ? text_direction::LTR : text_direction::RTL);
         const char32_t* runStart = &codePoints[0];
         std::u32string::size_type lastCodePointIndex = codePointCount - 1;
         font previousFont = aFontSelector.select_font(0);
-        hb_script_t previousScript = hb_unicode_script(static_cast<native_font_face::hb_handle*>(previousFont.native_font_face().aux_handle())->unicodeFuncs, codePoints[0]);
+        hb_script_t previousScript = hb_unicode_script(static_cast<font_face_handle*>(previousFont.native_font_face().handle())->harfbuzzUnicodeFuncs, codePoints[0]);
 
         std::deque<std::pair<text_direction, bool>> directionStack;
         const char32_t LRE = U'\u202A';
@@ -483,9 +483,10 @@ namespace neogfx
                 break;
             }
 
-            hb_unicode_funcs_t* unicodeFuncs = static_cast<native_font_face::hb_handle*>(currentFont.native_font_face().aux_handle())->unicodeFuncs;
+            hb_unicode_funcs_t* unicodeFuncs = static_cast<font_face_handle*>(currentFont.native_font_face().handle())->harfbuzzUnicodeFuncs;
             text_category currentCategory = get_text_category(emojiAtlas, codePoints + codePointIndex, codePoints + codePointCount);
-            if (aContext.mnemonic_set() && codePoints[codePointIndex] == static_cast<char32_t>(aContext.mnemonic()))
+            if (aContext.mnemonic_set() && codePoints[codePointIndex] == static_cast<char32_t>(aContext.mnemonic()) &&
+                (codePointCount - 1 == codePointIndex || codePoints[codePointIndex + 1] != static_cast<char32_t>(aContext.mnemonic())))
                 currentCategory = text_category::Mnemonic;
             text_direction currentDirection = previousDirection;
             if (currentCategory == text_category::LTR)
@@ -493,7 +494,7 @@ namespace neogfx
             else if (currentCategory == text_category::RTL)
                 currentDirection = text_direction::RTL;
 
-            bool newLine = (codePoints[codePointIndex] == '\r' || codePoints[codePointIndex] == '\n');
+            bool newLine = (codePoints[codePointIndex] == U'\r' || codePoints[codePointIndex] == U'\n');
             if (newLine)
             {
                 currentLineHasLTR = false;
@@ -655,9 +656,11 @@ namespace neogfx
         {
             if (std::get<3>(runs[i]))
                 continue;
+            
             bool drawMnemonic = (i > 0 && std::get<3>(runs[i - 1]));
             std::string::size_type sourceClusterRunStart = std::get<0>(runs[i]) - &codePoints[0];
             glyph_shapes shapes{ aContext, aFontSelector.select_font(sourceClusterRunStart), runs[i] };
+            
             for (uint32_t j = 0; j < shapes.glyph_count(); ++j)
             {
                 std::u32string::size_type startCluster = shapes.glyph_info(j).cluster;
@@ -678,6 +681,10 @@ namespace neogfx
                 }
                 startCluster += (std::get<0>(runs[i]) - &codePoints[0]);
                 endCluster += (std::get<0>(runs[i]) - &codePoints[0]);
+
+                if (textDirections[startCluster].category == text_category::Whitespace && aUtf32Begin[startCluster] == U'\r')
+                    result.line_breaks().push_back(result.size());
+
                 neogfx::font selectedFont = aFontSelector.select_font(startCluster);
                 neogfx::font font = selectedFont;
                 if (shapes.using_fallback(j))
@@ -686,12 +693,10 @@ namespace neogfx
                     for (auto fi = shapes.fallback_index(j); font != selectedFont && fi > 0; --fi)
                         font = font.has_fallback() ? font.fallback() : selectedFont;
                 }
-                if (j > 0 && !result.empty())
-                    kerning_adjust(result.back(), static_cast<float>(font.kerning(shapes.glyph_info(j - 1).codepoint, shapes.glyph_info(j).codepoint)));
                 size advance = textDirections[startCluster].category != text_category::Emoji ?
                     size{ shapes.glyph_position(j).x_advance / 64.0, shapes.glyph_position(j).y_advance / 64.0 } :
                     size{ font.height(), 0.0 };
-                result.emplace_back(
+                auto& newGlyph = result.emplace_back(
                     textDirections[startCluster],
                     shapes.glyph_info(j).codepoint,
                     glyph::flags_e{},
@@ -699,40 +704,27 @@ namespace neogfx
                     font.id(),
                     advance, point(shapes.glyph_position(j).x_offset / 64.0, shapes.glyph_position(j).y_offset / 64.0),
                     size{advance.cx, font.height()});
-                if (category(result.back()) == text_category::Whitespace)
-                    result.back().value = aUtf32Begin[startCluster];
-                else if (category(result.back()) == text_category::Emoji)
-                    result.back().value = emojiAtlas.emoji(aUtf32Begin[startCluster], font.height());
+                if (category(newGlyph) == text_category::Whitespace)
+                    newGlyph.value = aUtf32Begin[startCluster];
+                else if (category(newGlyph) == text_category::Emoji)
+                    newGlyph.value = emojiAtlas.emoji(aUtf32Begin[startCluster], font.height());
                 if ((selectedFont.style() & font_style::Underline) == font_style::Underline)
-                    set_underline(result.back(), true);
+                    set_underline(newGlyph, true);
                 if ((selectedFont.style() & font_style::Superscript) == font_style::Superscript)
-                    set_superscript(result.back(), true, (selectedFont.style() & font_style::BelowAscenderLine) == font_style::BelowAscenderLine);
+                    set_superscript(newGlyph, true, (selectedFont.style() & font_style::BelowAscenderLine) == font_style::BelowAscenderLine);
                 if ((selectedFont.style() & font_style::Subscript) == font_style::Subscript)
-                    set_subscript(result.back(), true, (selectedFont.style() & font_style::AboveBaseline) == font_style::AboveBaseline);
+                    set_subscript(newGlyph, true, (selectedFont.style() & font_style::AboveBaseline) == font_style::AboveBaseline);
                 if (aContext.is_subpixel_rendering_on() && !font.is_bitmap_font())
-                    set_subpixel(result.back(), true);
+                    set_subpixel(newGlyph, true);
                 if (drawMnemonic && ((j == 0 && std::get<2>(runs[i]) == text_direction::LTR) || (j == shapes.glyph_count() - 1 && std::get<2>(runs[i]) == text_direction::RTL)))
-                    set_mnemonic(result.back(), true);
-                if (category(result.back()) != text_category::Whitespace && category(result.back()) != text_category::Emoji)
-                {
-                    auto& glyph = result.back();
-                    if (neogfx::advance(glyph) != advance.ceil())
-                    {
-                        const i_glyph_texture& glyphTexture = font.native_font_face().glyph_texture(glyph);
-                        auto visibleAdvance = std::ceil(offset(glyph).x + glyphTexture.placement().x + glyphTexture.texture().extents().cx);
-                        if (visibleAdvance > advance.cx)
-                        {
-                            advance.cx = visibleAdvance;
-                            glyph.advance = advance;
-                        }
-                    }
-                }
+                    set_mnemonic(newGlyph, true);
             }
         }
         if (hasEmojis)
         {
             auto refEmojiResult = make_ref<glyph_text_content>(aFontSelector.select_font(0));
             auto& emojiResult = *refEmojiResult;
+            emojiResult.line_breaks() = result.line_breaks();
             for (auto i = result.begin(); i != result.end(); ++i)
             {
                 auto cluster = i->source.first;
@@ -832,9 +824,41 @@ namespace neogfx
         };
         enumerate(detail::platform_specific::get_system_font_directory());
         enumerate(detail::platform_specific::get_local_font_directory());
-        for (auto& famlily : iFontFamilies)
-            std::sort(famlily.second.begin(), famlily.second.end(),
+        for (auto& family : iFontFamilies)
+        {
+            std::optional<native_font_list::iterator> bold;
+            std::optional<native_font_list::iterator> italic;
+            std::optional<native_font_list::iterator> boldItalic;
+            std::vector<native_font_list::iterator> emulatedBold;
+            std::vector<native_font_list::iterator> emulatedItalic;
+            std::vector<native_font_list::iterator> emulatedBoldItalic;
+            for (auto& font : family.second)
+            {
+                if (font->has_style(font_style::Bold))
+                    bold = font;
+                if (font->has_style(font_style::Italic))
+                    italic = font;
+                if (font->has_style(font_style::BoldItalic))
+                    boldItalic = font;
+                if (font->has_style(font_style::EmulatedBold))
+                    emulatedBold.push_back(font);
+                if (font->has_style(font_style::EmulatedItalic))
+                    emulatedItalic.push_back(font);
+                if (font->has_style(font_style::EmulatedBoldItalic))
+                    emulatedBoldItalic.push_back(font);
+            }
+            if (bold)
+                for (auto& f : emulatedBold)
+                    (*f).remove_style(font_style::EmulatedBold);
+            if (italic)
+                for (auto& f : emulatedItalic)
+                    (*f).remove_style(font_style::EmulatedItalic);
+            if (boldItalic)
+                for (auto& f : emulatedBoldItalic)
+                    (*f).remove_style(font_style::EmulatedBoldItalic);
+            std::sort(family.second.begin(), family.second.end(),
                 [](auto const& f1, auto const& f2) { return f1->min_style() < f2->min_style() || (f1->min_style() == f2->min_style() && f1->min_weight() < f2->min_weight()); });
+        }
     }
 
     font_manager::~font_manager()
@@ -894,6 +918,8 @@ namespace neogfx
 
     i_native_font_face& font_manager::create_font(i_string const& aFamilyName, neogfx::font_style aStyle, font::point_size aSize, const i_device_resolution& aDevice)
     {
+        if (aStyle == neogfx::font_style::Emulated)
+            aStyle = neogfx::font_style::Normal;
         return add_font(find_best_font(aFamilyName, aStyle, aSize).create_face(aStyle, aSize, aDevice));
     }
 
@@ -912,6 +938,8 @@ namespace neogfx
 
     i_native_font_face& font_manager::create_font(i_native_font& aFont, neogfx::font_style aStyle, font::point_size aSize, const i_device_resolution& aDevice)
     {
+        if (aStyle == neogfx::font_style::Emulated)
+            aStyle = neogfx::font_style::Normal;
         return add_font(aFont.create_face(aStyle, aSize, aDevice));
     }
 
@@ -1007,7 +1035,21 @@ namespace neogfx
         throw bad_font_family_index();
     }
 
-    i_string const& font_manager::font_style(uint32_t aFamilyIndex, uint32_t aStyleIndex) const
+    font_style font_manager::font_style(uint32_t aFamilyIndex, uint32_t aStyleIndex) const
+    {
+        if (aFamilyIndex < font_family_count() && aStyleIndex < font_style_count(aFamilyIndex))
+        {
+            for (auto& font : std::next(iFontFamilies.begin(), aFamilyIndex)->second)
+            {
+                if (aStyleIndex < font->style_count())
+                    return font->style(aStyleIndex);
+                aStyleIndex -= font->style_count();
+            }
+        }
+        throw bad_font_family_index();
+    }
+
+    i_string const& font_manager::font_style_name(uint32_t aFamilyIndex, uint32_t aStyleIndex) const
     {
         if (aFamilyIndex < font_family_count() && aStyleIndex < font_style_count(aFamilyIndex))
         {
@@ -1108,14 +1150,23 @@ namespace neogfx
 
     i_native_font& font_manager::find_best_font(i_string const& aFamilyName, neogfx::font_style aStyle, font::point_size)
     {
+        if (aStyle == neogfx::font_style::Emulated)
+            aStyle = neogfx::font_style::Normal;
         auto family = iFontFamilies.find(aFamilyName);
         if (family == iFontFamilies.end() && default_system_font_info(system_font_role::Widget) != std::nullopt)
             family = iFontFamilies.find(default_system_font_info(system_font_role::Widget)->family_name());
         if (family == iFontFamilies.end())
             throw no_matching_font_found();
-        std::optional<std::pair<std::pair<uint32_t, font_weight>, i_native_font*>> bestNormalFont;
-        std::optional<std::pair<std::pair<uint32_t, font_weight>, i_native_font*>> bestBoldFont;
-        std::optional<std::pair<std::pair<uint32_t, font_weight>, i_native_font*>> bestOtherFont;
+        struct match
+        {
+            uint32_t matchingBits;
+            neogfx::font_style style;
+            font_weight weight;
+            i_native_font* font;
+        };
+        std::optional<match> bestNormalFont;
+        std::optional<match> bestBoldFont;
+        std::optional<match> bestOtherFont;
         for (auto& f : family->second)
         {
             for (uint32_t s = 0; s < f->style_count(); ++s)
@@ -1124,40 +1175,48 @@ namespace neogfx
                 auto const& styleName = f->style_name(s);
                 auto const weight = font::weight_from_style_name(styleName);
                 if (weight <= font_weight::Normal && (
-                    bestNormalFont == std::nullopt || 
-                    bestNormalFont->first.first < matchingBits ||
-                    (bestNormalFont->first.first == matchingBits && bestNormalFont->first.second < weight)))
-                    bestNormalFont = std::make_pair(std::make_pair(matchingBits, weight), &*f);
+                    bestNormalFont == std::nullopt ||
+                    bestNormalFont->matchingBits < matchingBits ||
+                    (bestNormalFont->matchingBits == matchingBits && bestNormalFont->weight < weight)))
+                {
+                    bestNormalFont = match{ matchingBits, f->style(s), weight, &*f };
+                }
                 else if (weight >= font_weight::Bold && (
                     bestBoldFont == std::nullopt ||
-                    bestBoldFont->first.first < matchingBits ||
-                    (bestBoldFont->first.first == matchingBits && bestBoldFont->first.second > weight)))
-                    bestBoldFont = std::make_pair(std::make_pair(matchingBits, weight), &*f);
+                    bestBoldFont->matchingBits < matchingBits ||
+                    (bestBoldFont->style & font_style::Emulated) == font_style::Emulated ||
+                    (bestBoldFont->matchingBits == matchingBits && bestBoldFont->weight > weight)))
+                {
+                    bestBoldFont = match{ matchingBits, f->style(s), weight, &*f };
+                }
                 else if (bestOtherFont == std::nullopt ||
-                    bestOtherFont->first.first < matchingBits ||
-                    (bestOtherFont->first.first == matchingBits && bestOtherFont->first.second < weight))
-                    bestOtherFont = std::make_pair(std::make_pair(matchingBits, weight), &*f);
+                    bestOtherFont->matchingBits < matchingBits ||
+                    (bestOtherFont->style & font_style::Emulated) == font_style::Emulated ||
+                    (bestOtherFont->matchingBits == matchingBits && bestOtherFont->weight < weight))
+                {
+                    bestOtherFont = match{ matchingBits, f->style(s), weight, &*f };
+                }
             }
         }
         if ((aStyle & neogfx::font_style::Bold) != neogfx::font_style::Bold)
         {
             if (bestNormalFont != std::nullopt)
-                return *bestNormalFont->second;
+                return *bestNormalFont->font;
             else if (bestOtherFont != std::nullopt)
-                return *bestOtherFont->second;
+                return *bestOtherFont->font;
             else if (bestBoldFont != std::nullopt)
-                return *bestBoldFont->second;
+                return *bestBoldFont->font;
             else
                 throw no_matching_font_found();
         }
         else
         {
             if (bestBoldFont != std::nullopt)
-                return *bestBoldFont->second;
+                return *bestBoldFont->font;
             else if (bestOtherFont != std::nullopt)
-                return *bestOtherFont->second;
+                return *bestOtherFont->font;
             else if (bestNormalFont != std::nullopt)
-                return *bestNormalFont->second;
+                return *bestNormalFont->font;
             else
                 throw no_matching_font_found();
         }

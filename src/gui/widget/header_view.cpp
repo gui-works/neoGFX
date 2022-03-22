@@ -18,7 +18,7 @@
 */
 
 #include <neogfx/neogfx.hpp>
-#include <neolib/task/timer.hpp>
+#include <neogfx/gui/widget/timer.hpp>
 #include <neolib/core/lifetime.hpp>
 #include <neolib/task/thread.hpp>
 #include <neogfx/app/i_app.hpp>
@@ -333,8 +333,8 @@ namespace neogfx
             if ((aAspect & (style_aspect::Geometry | style_aspect::Font)) != style_aspect::None)
                 request_full_update();
         });
-        iUpdater.emplace(service<i_async_task>(), 
-            [this](neolib::callback_timer& aTimer) 
+        iUpdater.emplace(*this, 
+            [this](widget_timer& aTimer) 
         { 
             aTimer.again();
             if (iUpdateNeeded)
@@ -362,6 +362,7 @@ namespace neogfx
         for (uint32_t i = 0u; i < layout().count(); ++i)
         {
             header_button& button = layout().get_widget_at<header_button>(i);
+            button.layout().set_alignment(alignment::Left | alignment::VCenter);
             if (i == 0u)
             {
                 auto m = button.padding();
@@ -394,7 +395,7 @@ namespace neogfx
                             presentation_model().sort_by(i);
                             root().window_manager().restore_mouse_cursor(root());
                         }
-                    }, *this);
+                    });
                 if (iButtonSinks[i][1].empty())
                     iButtonSinks[i][1] = button.right_clicked([&, i]()
                     {
@@ -436,7 +437,7 @@ namespace neogfx
                             });
                             menu.exec();
                         }
-                    }, *this);
+                    });
             }
             else if (!expand_last_column())
             {

@@ -35,17 +35,31 @@ namespace neogfx
 {
     enum class text_edit_caps : uint32_t
     {
-        None            = 0x00000000,
+        None        = 0x00000000,
 
-        SingleLine      = 0x00000001,
-        MultiLine       = 0x00000002,
+        SingleLine  = 0x00000001,
+        MultiLine   = 0x00000002,
+        GrowLines   = SingleLine | MultiLine,
 
-        OnlyAccept      = 0x00010000,
+        Password    = 0x00000100,
 
-        LINES_MASK      = 0x0000000F,
-        ACCEPT_MASK     = 0x000F0000,
+        ParseURIs   = 0x00001000,
+
+        OnlyAccept  = 0x00010000,
+
+        LINES_MASK  = SingleLine | MultiLine
     };
+}
 
+begin_declare_enum(neogfx::text_edit_caps)
+declare_enum_string(neogfx::text_edit_caps, SingleLine)
+declare_enum_string(neogfx::text_edit_caps, MultiLine)
+declare_enum_string(neogfx::text_edit_caps, Password)  
+declare_enum_string(neogfx::text_edit_caps, OnlyAccept)
+end_declare_enum(neogfx::text_edit_caps)
+
+namespace neogfx
+{
     inline text_edit_caps operator~(text_edit_caps aLhs)
     {
         return static_cast<text_edit_caps>(~static_cast<uint32_t>(aLhs));
@@ -70,6 +84,7 @@ namespace neogfx
         define_event(TextChanged, text_changed)
         define_event(DefaultStyleChanged, default_style_changed)
         define_event(ContextMenu, context_menu, i_menu&)
+        define_event(UriClicked, uri_clicked, i_string const&)
     private:
         typedef text_edit property_context_type;
     public:
@@ -113,11 +128,34 @@ namespace neogfx
             bool iIgnoreEmoji;
             optional_text_effect iTextEffect;
         };
+        class paragraph_style
+        {
+        public:
+            paragraph_style();
+            paragraph_style(paragraph_style const& aOther);
+            paragraph_style(optional_padding const& aPadding, optional<double> const& aLineSpacing);
+        public:
+            optional_padding const& padding() const;
+            paragraph_style& set_padding(optional_padding const& aPadding = {});
+            optional<double> const& line_spacing() const;
+            paragraph_style& set_line_spacing(optional<double> const& aLineSpacing = {});
+        public:
+            paragraph_style& merge(const paragraph_style& aRhs);
+        public:
+            bool operator==(const paragraph_style& aRhs) const;
+            bool operator!=(const paragraph_style& aRhs) const;
+            bool operator<(const paragraph_style& aRhs) const;
+        public:
+            optional_padding iPadding;
+            optional<double> iLineSpacing;
+        };
         class style
         {
         public:
             style();
             style(character_style const& aCharacter);
+            style(character_style const& aCharacter, paragraph_style const& aParagraph);
+            style(paragraph_style const& aParagraph);
             style(text_edit& aParent, const style& aOther);
         public:
             void add_ref() const;
@@ -131,10 +169,13 @@ namespace neogfx
         public:
             character_style const& character() const;
             character_style& character();
+            paragraph_style const& paragraph() const;
+            paragraph_style& paragraph();
         private:
 			text_edit* iParent;
             mutable uint32_t iUseCount;
             character_style iCharacter;
+            paragraph_style iParagraph;
         };
         typedef std::set<style> style_list;
         class column_info
@@ -333,6 +374,14 @@ namespace neogfx
             {
                 iSelf = aSelf;
             }
+            i_vector<glyph_text::size_type> const& line_breaks() const
+            {
+                return iLineBreaks;
+            }
+            void set_line_breaks(i_vector<glyph_text::size_type> const& aLineBreaks)
+            {
+                iLineBreaks = aLineBreaks;
+            }
             glyph_paragraph& operator=(const glyph_paragraph& aOther)
             {
                 iParent = aOther.iParent;
@@ -428,6 +477,7 @@ namespace neogfx
             text_edit* iParent;
             glyph_paragraphs::const_iterator iSelf;
             mutable height_list iHeights;
+            vector<glyph_text::size_type> iLineBreaks;
         };
         struct glyph_line
         {
@@ -455,6 +505,27 @@ namespace neogfx
             dimension iWidth;
         };
         typedef std::vector<glyph_column> glyph_columns;
+    private:
+        class dragger : public widget_timer
+        {
+        public:
+            dragger(text_edit& aOwner) : 
+                widget_timer{ aOwner, [&](widget_timer& aTimer)
+                {
+                    aTimer.again();
+                    aOwner.set_cursor_position(aOwner.mouse_position(), false);
+                }, std::chrono::milliseconds{ 250 } }, 
+                iSts1{ aOwner.vertical_scrollbar().Position },
+                iSts2{ aOwner.horizontal_scrollbar().Position }
+            {
+            }
+            ~dragger()
+            {
+            }
+        private:
+            scoped_property_transition_suppression iSts1;
+            scoped_property_transition_suppression iSts2;
+        };
     public:
         typedef document_text::size_type position_type;
     public:
@@ -497,6 +568,7 @@ namespace neogfx
         bool text_input(i_string const& aText) override;
     public:
         neogfx::scrolling_disposition scrolling_disposition() const override;
+        bool use_scrollbar_container_updater() const override;
         using framed_scrollable_widget::update_scrollbar_visibility;
         void update_scrollbar_visibility(usv_stage_e aStage) override;
     public:
@@ -519,6 +591,7 @@ namespace neogfx
         void select_all() override;
         // i_text_document
     public:
+        std::size_t document_length() const override;
         void move_cursor(cursor::move_operation_e aMoveOperation, bool aMoveAnchor = true) override;
     public:
         i_string const& plain_text() const override;
@@ -528,12 +601,17 @@ namespace neogfx
     public:
         void paste_plain_text() override;
         void paste_rich_text(rich_text_format aFormat = rich_text_format::Html) override;
+    public:
+        void begin_update() override;
+        void end_update() override;
         // text_edit
     public:
         bool read_only() const;
         void set_read_only(bool aReadOnly = true);
         bool word_wrap() const;
         void set_word_wrap(bool aWordWrap = true);
+        uint32_t grow_lines() const;
+        void set_grow_lines(uint32_t aGrowLines = 5u);
         bool password() const;
         i_string const& password_mask() const;
         void set_password(bool aPassword, i_string const& aMask = string{ "\xE2\x97\x8F" });
@@ -549,6 +627,8 @@ namespace neogfx
         style next_style() const;
     public:
         void clear();
+        std::size_t paragraph_count() const;
+        void delete_paragraph(std::size_t aParagraphIndex);
         i_string const& text() const;
         std::size_t set_text(i_string const& aText);
         std::size_t set_text(i_string const& aText, const style& aStyle);
@@ -625,6 +705,7 @@ namespace neogfx
         void animate();
         void update_cursor();
         void make_cursor_visible(bool aForcePreviewScroll = false);
+        void make_visible(position_info const& aGlyphPosition, point const& aPreview = {});
         style glyph_style(document_glyphs::const_iterator aGlyph, const glyph_column& aColumn) const;
         void draw_glyphs(i_graphics_context const& aGc, const point& aPosition, const glyph_column& aColumn, glyph_lines::const_iterator aLine) const;
         void draw_cursor(i_graphics_context const& aGc) const;
@@ -641,6 +722,7 @@ namespace neogfx
         font_info iDefaultFont;
         mutable neogfx::cursor iCursor;
         style_list iStyles;
+        bool iUpdatingDocument;
         std::u32string iNormalizedTextBuffer;
         document_text iPreviousText;
         document_text iText;
@@ -648,7 +730,7 @@ namespace neogfx
         mutable std::optional<document_glyphs> iGlyphs;
         glyph_paragraphs iGlyphParagraphs;
         glyph_columns iGlyphColumns;
-        size iTextExtents;
+        optional_size iTextExtents;
         uint64_t iCursorAnimationStartTime;
         typedef std::pair<position_type, position_type> find_span;
         typedef std::map<
@@ -666,15 +748,16 @@ namespace neogfx
         string iTabStopHint;
         basic_point<std::optional<dimension>> iCursorHint;
         mutable std::optional<std::pair<neogfx::font, dimension>> iCalculatedTabStops;
-        neolib::callback_timer iAnimator;
-        std::optional<neolib::callback_timer> iDragger;
+        widget_timer iAnimator;
+        std::optional<dragger> iDragger;
         std::unique_ptr<neogfx::context_menu> iMenu;
         uint32_t iSuppressTextChangedNotification;
         uint32_t iWantedToNotfiyTextChanged;
         bool iOutOfMemory;
     public:
         define_property(property_category::other, bool, ReadOnly, read_only, false)
-        define_property(property_category::other, bool, WordWrap, word_wrap, iCaps == text_edit_caps::MultiLine)
+        define_property(property_category::other, bool, WordWrap, word_wrap, (iCaps & text_edit_caps::MultiLine) == text_edit_caps::MultiLine)
+        define_property(property_category::other, uint32_t, GrowLines, grow_lines, 5u)
         define_property(property_category::other, bool, Password, password, false)
         define_property(property_category::other, string, PasswordMask, password_mask)
         define_property(property_category::other, neogfx::alignment, Alignment, alignment, neogfx::alignment::Left | neogfx::alignment::Top)

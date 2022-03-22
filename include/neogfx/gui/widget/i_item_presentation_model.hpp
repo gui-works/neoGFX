@@ -26,14 +26,15 @@
 #include <neogfx/gfx/text/font.hpp>
 #include <neogfx/gfx/text/glyph.hpp>
 #include <neogfx/gfx/i_graphics_context.hpp>
+#include <neogfx/app/i_palette.hpp>
 #include <neogfx/gui/widget/i_button.hpp>
 #include <neogfx/gui/widget/item_index.hpp>
 #include <neogfx/gui/widget/i_item_model.hpp>
-#include <neogfx/app/i_palette.hpp>
 
 namespace neogfx
 {
     class i_drag_drop_item;
+    class i_drag_drop_target;
 
     enum class item_cell_flags : uint32_t
     {
@@ -149,6 +150,30 @@ namespace neogfx
     };
     typedef std::optional<item_presentation_model_index> optional_item_presentation_model_index;
 
+    class i_item_sort_predicate
+    {
+    public:
+        virtual ~i_item_sort_predicate() = default;
+    public:
+        virtual bool compare(item_model_index aLhs, item_model_index aRhs) const noexcept = 0;
+    };
+
+    class item_sort_predicate : public i_item_sort_predicate
+    {
+    public:
+        item_sort_predicate(std::function<bool(item_model_index aLhs, item_model_index aRhs)> const& aPredicate) :
+            iPredicate{ aPredicate }
+        {
+        }
+    public:
+        bool compare(item_model_index aLhs, item_model_index aRhs) const noexcept override
+        {
+            return iPredicate(aLhs, aRhs);
+        }
+    private:
+        std::function<bool(item_model_index aLhs, item_model_index aRhs)> iPredicate;
+    };
+
     class i_item_presentation_model : public i_reference_counted, public i_property_owner
     {
     public:
@@ -166,6 +191,8 @@ namespace neogfx
         declare_event(item_checked, item_presentation_model_index const&)
         declare_event(item_unchecked, item_presentation_model_index const&)
         declare_event(item_indeterminate, item_presentation_model_index const&)
+        declare_event(items_updating)
+        declare_event(items_updated)
         declare_event(items_sorting)
         declare_event(items_sorted)
         declare_event(items_filtering)
@@ -197,8 +224,8 @@ namespace neogfx
             Descending
         };
         typedef std::optional<sort_direction> optional_sort_direction;
-        typedef std::pair<item_presentation_model_index::column_type, sort_direction> sort;
-        typedef std::optional<sort> optional_sort;
+        typedef std::pair<item_presentation_model_index::column_type, sort_direction> sort_by_param;
+        typedef std::optional<sort_by_param> optional_sort_by_param;
         typedef std::string filter_search_key;
         enum class filter_search_type
         {
@@ -220,7 +247,9 @@ namespace neogfx
     public:
         virtual ~i_item_presentation_model() = default;
     public:
-        virtual bool initializing() const = 0;
+        virtual bool updating() const = 0;
+        virtual void begin_update() = 0;
+        virtual void end_update() = 0;
         virtual bool has_item_model() const = 0;
         virtual i_item_model& item_model() const = 0;
         virtual void set_item_model(i_item_model& aItemModel) = 0;
@@ -243,7 +272,10 @@ namespace neogfx
         virtual optional_size column_image_size(item_presentation_model_index::column_type aColumnIndex) const = 0;
         virtual void set_column_image_size(item_presentation_model_index::column_type aColumnIndex, optional_size const& aImageSize) = 0;
     public:
+        virtual bool expand(item_presentation_model_index const& aIndex) = 0;
+        virtual bool collapse(item_presentation_model_index const& aIndex) = 0;
         virtual bool toggle_expanded(item_presentation_model_index const& aIndex) = 0;
+        virtual bool expand_to(item_model_index const& aIndex) = 0;
     public:
         virtual button_checked_state const& checked_state(item_presentation_model_index const& aIndex) = 0;
         virtual bool is_checked(item_presentation_model_index const& aIndex) const = 0;
@@ -288,9 +320,10 @@ namespace neogfx
         virtual size cell_extents(item_presentation_model_index const& aIndex, i_graphics_context const& aGc) const = 0;
         virtual dimension indent(item_presentation_model_index const& aIndex, i_graphics_context const& aGc) const = 0;
     public:
+        virtual void sort(i_item_sort_predicate const& aPredicate) = 0;
         virtual bool sortable() const = 0;
         virtual void set_sortable(bool aSortable) = 0;
-        virtual optional_sort sorting_by() const = 0;
+        virtual optional_sort_by_param sorting_by() const = 0;
         virtual void sort_by(item_presentation_model_index::column_type aColumnIndex, optional_sort_direction const& aSortDirection = optional_sort_direction{}) = 0;
         virtual void reset_sort() = 0;
     public:
@@ -494,5 +527,21 @@ namespace neogfx
             else
                 set_cell_flags(aIndex, cell_flags(aIndex) & ~(item_cell_flags::Checkable | item_cell_flags::CheckableTriState));
         }
+    };
+
+    class scoped_item_update
+    {
+    public:
+        scoped_item_update(i_item_presentation_model& aPresentationModel) :
+            iPresentationModel{ aPresentationModel }
+        {
+            iPresentationModel.begin_update();
+        }
+        ~scoped_item_update()
+        {
+            iPresentationModel.end_update();
+        }
+    private:
+        i_item_presentation_model& iPresentationModel;
     };
 }

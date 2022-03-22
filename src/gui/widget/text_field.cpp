@@ -52,7 +52,6 @@ namespace neogfx
         widget{},
         iPlacement{ aPlacement },
         iLayout{ *this },
-        iLabel{ iLayout, aLabel },
         iInputLayout{ iLayout },
         iInputBoxContainer{ iInputLayout, aFrameStyle },
         iInputBoxContainerLayout{ iInputBoxContainer },
@@ -68,7 +67,6 @@ namespace neogfx
         widget{ aParent },
         iPlacement{ aPlacement },
         iLayout{ *this },
-        iLabel{ iLayout, aLabel },
         iInputLayout{ iLayout },
         iInputBoxContainer{ iInputLayout, aFrameStyle },
         iInputBoxContainerLayout{ iInputBoxContainer },
@@ -84,7 +82,6 @@ namespace neogfx
         widget{ aLayout },
         iPlacement{ aPlacement },
         iLayout{ *this },
-        iLabel{ iLayout, aLabel },
         iInputLayout{ iLayout },
         iInputBoxContainer{ iInputLayout, aFrameStyle },
         iInputBoxContainerLayout{ iInputBoxContainer },
@@ -106,14 +103,23 @@ namespace neogfx
         input_box().set_text(aText);
     }
 
+    bool text_field::has_label() const
+    {
+        return iLabel != std::nullopt;
+    }
+
     const label& text_field::label() const
     {
-        return iLabel;
+        if (has_label())
+            return *iLabel;
+        throw no_label();
     }
 
     label& text_field::label()
     {
-        return iLabel;
+        if (has_label())
+            return *iLabel;
+        throw no_label();
     }
 
     const line_edit& text_field::input_box() const
@@ -146,13 +152,13 @@ namespace neogfx
         if (iPlacement != aPlacement)
         {
             iPlacement = aPlacement;
-            switch (iPlacement)
+            switch (placement())
             {
             case text_field_placement::LabelLeft:
-                iInputLayout.add_at(0, iLabel);
+                iInputLayout.add_at(0, label());
                 break;
             case text_field_placement::LabelAbove:
-                iLayout.add_at(0, iLabel);
+                iLayout.add_at(0, label());
                 break;
             }
         }
@@ -188,33 +194,50 @@ namespace neogfx
         return widget::maximum_size(aAvailableSpace);
     }
 
+    void text_field::focus_gained(focus_reason aFocusReason)
+    {
+        input_box().set_focus(aFocusReason);
+    }
+
     void text_field::init()
     {
-        if (iPlacement == text_field_placement::LabelLeft)
-            iInputLayout.add_at(0, iLabel);
+        if (placement() == text_field_placement::LabelLeft)
+        {
+            iLabel.emplace();
+            iInputLayout.add_at(0, label());
+        }
+        else if (placement() == text_field_placement::LabelAbove)
+        {
+            iLabel.emplace();
+            iLayout.add_at(0, label());
+        }
 
         set_padding(neogfx::padding{});
         iLayout.set_padding(neogfx::padding{});
         iInputLayout.set_padding(neogfx::padding{});
-        iInputBoxContainer.set_padding(iInputBox.padding());
+        iInputBoxContainer.set_padding(input_box().padding());
         iInputBoxContainerLayout.set_padding(neogfx::padding{});
         auto label_padding_updater = [this](const neogfx::optional_padding&)
         {
-            if (iPlacement == text_field_placement::LabelAbove)
-                iLabel.set_padding(neogfx::padding{ iInputBoxContainer.padding().left + iInputBoxContainer.effective_frame_width(), 0.0 });
-            else
-                iLabel.set_padding({});
+            if (has_label())
+            {
+                if (placement() == text_field_placement::LabelAbove)
+                    label().set_padding(neogfx::padding{ iInputBoxContainer.padding().left + iInputBoxContainer.effective_frame_width(), 0.0 });
+                else
+                    label().set_padding({});
+            }
         };
         iInputBoxContainer.Padding.Changed(label_padding_updater);
         label_padding_updater(iInputBoxContainer.Padding);
-        iLabel.set_size_policy(neogfx::size_policy{ size_constraint::Minimum, size_constraint::Minimum });
-        iInputBox.set_padding(neogfx::padding{});
+        if (has_label())
+            label().set_size_policy(neogfx::size_policy{ size_constraint::Minimum, size_constraint::Minimum });
+        input_box().set_padding(neogfx::padding{});
         iInputBoxLayout.set_size_policy(neogfx::size_policy{ size_constraint::Expanding, size_constraint::Minimum });
         iInputBoxLayout.set_padding(neogfx::padding{});
-        iHint.set_size_policy(neogfx::size_policy{ size_constraint::Expanding, size_constraint::Minimum });
-        iHint.set_alignment(alignment::Left | alignment::VCenter);
-        iHelp.set_padding(neogfx::padding{});
-        iHelp.set_alignment(alignment::Left | alignment::VCenter);
+        hint().set_size_policy(neogfx::size_policy{ size_constraint::Expanding, size_constraint::Minimum });
+        hint().set_alignment(alignment::Left | alignment::VCenter);
+        help().set_padding(neogfx::padding{});
+        help().set_alignment(alignment::Left | alignment::VCenter);
 
         auto size_hint_updater = [this]()
         {

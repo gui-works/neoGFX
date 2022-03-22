@@ -36,6 +36,8 @@ namespace neogfx
         typedef Base base_type;
     public:
         define_declared_event(StyleChanged, style_changed)
+        define_declared_event(TabPageAdded, tab_page_added, i_tab_page&)
+        define_declared_event(TabPageRemoved, tab_page_removed, i_tab_page&)
         define_declared_event(SelectedTabPageChanged, selected_tab_page_changed, i_tab_page&)
     private:
         typedef ref_ptr<i_tab_page> tab_page_pointer;
@@ -48,21 +50,25 @@ namespace neogfx
         tab_page_container(i_layout& aLayout, i_layout& aTabBarLayout, bool aClosableTabs = false, neogfx::tab_container_style aStyle = neogfx::tab_container_style::TabAlignmentTop);
         ~tab_page_container();
     public:
-        neogfx::tab_container_style tab_container_style() const override;
+        bool closable_tabs() const noexcept override;
+        void set_closable_tabs(bool aClosableTabs) override;
+        neogfx::tab_container_style tab_container_style() const noexcept override;
         void set_tab_container_style(neogfx::tab_container_style aStyle) override;
         void set_tab_icon_size(const size& aIconSize) override;
     public:
+        i_tab_container& tab_bar() override;
+    public:
         i_layout& page_layout() override;
     public:
-        bool has_tabs() const override;
-        uint32_t tab_count() const override;
+        bool has_tabs() const noexcept override;
+        uint32_t tab_count() const noexcept override;
         tab_index index_of(const i_tab& aTab) const override;
         const i_tab& tab(tab_index aTabIndex) const override;
         i_tab& tab(tab_index aTabIndex) override;
         bool has_tab_page(tab_index aTabIndex) const override;
         const i_tab_page& tab_page(tab_index aTabIndex) const override;
         i_tab_page& tab_page(tab_index aTabIndex) override;
-        bool is_tab_selected() const override;
+        bool is_tab_selected() const noexcept override;
         const i_tab& selected_tab() const override;
         i_tab& selected_tab() override;
         const i_tab_page& selected_tab_page() const override;
@@ -82,6 +88,7 @@ namespace neogfx
         i_tab_page& add_tab_page(i_tab& aTab) override;
         i_tab_page& add_tab_page(i_tab& aTab, i_tab_page& aWidget) override;
         i_tab_page& add_tab_page(i_tab& aTab, i_ref_ptr<i_tab_page> const& aWidget) override;
+        void remove_tab_page(i_tab_page& aPage) override;
     public:
         void adding_tab(i_tab& aTab) override;
         void selecting_tab(i_tab& aTab) override;
@@ -100,6 +107,6 @@ namespace neogfx
     private:
         tab_list iTabs;
         border_layout iContainerLayout;
-        tab_bar iTabBar;
+        neogfx::tab_bar iTabBar;
     };
 }

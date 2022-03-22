@@ -916,7 +916,7 @@ namespace neogfx
                 {
                     char16_t characterCode = static_cast<char16_t>(wparam);
                     std::string text = neolib::utf16_to_utf8(std::u16string(&characterCode, 1));
-                    self.push_event(keyboard_event{ keyboard_event_type::SysTextInput, text });
+                    self.push_event(keyboard_event{ keyboard_event_type::SysTextInput, text, KeyCode_UNKNOWN, service<i_keyboard>().modifiers() });
                 }
                 break;
             case WM_MENUCHAR:
@@ -934,7 +934,7 @@ namespace neogfx
                     char16_t characterCode = static_cast<char16_t>(wparam);
                     std::string text = neolib::utf16_to_utf8(std::u16string(&characterCode, 1));
                     if (!text.empty() && (text.size() > 1 || text[0] >= ' ' || std::isspace(text[0])))
-                        self.push_event(keyboard_event{ keyboard_event_type::TextInput, text });
+                        self.push_event(keyboard_event{ keyboard_event_type::TextInput, text, KeyCode_UNKNOWN, service<i_keyboard>().modifiers() });
                 }
                 break;
             case WM_KEYDOWN:
@@ -1039,10 +1039,10 @@ namespace neogfx
                         self.push_event(mouse_event{ mouse_event_type::ButtonDoubleClicked, pt, HIWORD(wparam) == XBUTTON1 ? mouse_button::X1 : mouse_button::X2, mouse::modifiers_from_message(wparam) });
                         break;
                     case WM_MOUSEWHEEL:
-                        self.push_event(mouse_event{ mouse_event_type::WheelScrolled, pt, mouse_wheel::Vertical, mouse::modifiers_from_message(LOWORD(wparam)), neogfx::basic_delta<int16_t>{ 0, static_cast<int16_t>(HIWORD(wparam)) } });
+                        self.push_event(mouse_event{ mouse_event_type::WheelScrolled, pt - self.surface_position(), mouse_wheel::Vertical, mouse::modifiers_from_message(LOWORD(wparam)), neogfx::basic_delta<int16_t>{ 0, static_cast<int16_t>(HIWORD(wparam)) } });
                         break;
                     case WM_MOUSEHWHEEL:
-                        self.push_event(mouse_event{ mouse_event_type::WheelScrolled, pt, mouse_wheel::Horizontal, mouse::modifiers_from_message(LOWORD(wparam)), neogfx::basic_delta<int16_t>{ static_cast<int16_t>(HIWORD(wparam)), 0 } });
+                        self.push_event(mouse_event{ mouse_event_type::WheelScrolled, pt - self.surface_position(), mouse_wheel::Horizontal, mouse::modifiers_from_message(LOWORD(wparam)), neogfx::basic_delta<int16_t>{ static_cast<int16_t>(HIWORD(wparam)), 0 } });
                         break;
                     }
                 }
@@ -1246,6 +1246,7 @@ namespace neogfx
                 {
                     auto const& wpc = *reinterpret_cast<WINDOWPOS const*>(lparam);
                     bool placementChanged = false;
+                    bool needRedraw = ((wpc.flags & SWP_DRAWFRAME) == SWP_DRAWFRAME);
                     if (self.iPosition != basic_point<int>{ wpc.x, wpc.y }.as<scalar>())
                     {
                         self.iPosition.emplace(wpc.x, wpc.y);
@@ -1257,13 +1258,14 @@ namespace neogfx
                         self.iExtents.emplace(wpc.cx, wpc.cy);
                         self.push_event(window_event{ window_event_type::Resized, *self.iExtents });
                         placementChanged = true;
+                        needRedraw = true;
                     }
                     if (placementChanged)
                     {
                         if (!self.iInMoveResizeCall)
                             self.iPlacementChangedExplicitly = true;
                     }
-                    if (!self.initialising())
+                    if (!self.initialising() && needRedraw)
                     {
                         ::InvalidateRect(hwnd, NULL, FALSE);
                         ::UpdateWindow(hwnd);

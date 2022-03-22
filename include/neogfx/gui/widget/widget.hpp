@@ -20,7 +20,7 @@
 #pragma once
 
 #include <neogfx/neogfx.hpp>
-#include <neolib/task/timer.hpp>
+#include <neogfx/gui/widget/timer.hpp>
 #include <neogfx/core/object.hpp>
 #include <neogfx/core/property.hpp>
 #include <neogfx/app/palette.hpp>
@@ -34,6 +34,7 @@ namespace neogfx
     class widget : public layout_item<object<Interface>>
     {
         typedef layout_item<object<Interface>> base_type;
+        typedef widget<Interface> self_type;
     public:
         define_declared_event(ChildAdded, child_added, i_widget&)
         define_declared_event(ChildRemoved, child_removed, i_widget&)
@@ -79,17 +80,22 @@ namespace neogfx
         void property_changed(i_property& aProperty) override;
         // i_widget
     public:
-        bool is_singular() const override;
-        void set_singular(bool aSingular) override;
-        bool is_root() const override;
-        bool has_root() const override;
-        const i_window& root() const override;
-        i_window& root() override;
-        bool has_parent() const override;
-        const i_widget& parent() const override;
-        i_widget& parent() override;
+        bool is_singular() const final;
+        void set_singular(bool aSingular) final;
+        bool is_root() const final;
+        bool has_root() const final;
+        const i_window& root() const final;
+        i_window& root() final;
+        void set_root(i_window& aRoot) final;
+        bool is_surface() const override;
+        bool has_surface() const override;
+        const i_surface& surface() const override;
+        i_surface& surface() override;
+        bool has_parent() const final;
+        const i_widget& parent() const final;
+        i_widget& parent() final;
         void set_parent(i_widget& aParent) override;
-        void parent_changed() override;
+        void parent_changed() final;
         bool adding_child() const override;
         i_widget& add(i_widget& aChild) override;
         i_widget& add(const i_ref_ptr<i_widget>& aChild) override;
@@ -155,6 +161,7 @@ namespace neogfx
         void move(const point& aPosition) override;
         void moved() override;
         void parent_moved() override;
+        bool resizing() const override;
         void resize(const size& aSize) override;
         void resized() override;
         const i_widget& get_widget_at(const point& aPosition) const override;
@@ -187,6 +194,8 @@ namespace neogfx
     public:
         layer_t render_layer() const override;
         void set_render_layer(const std::optional<layer_t>& aLayer) override;
+        bool can_update() const override;
+        bool update(bool aIncludeNonClient = false) override;        
         bool update(const rect& aUpdateRect) override;
         bool requires_update() const override;
         rect update_rect() const override;
@@ -314,11 +323,13 @@ namespace neogfx
         bool iSingular;
         i_widget* iParent;
         mutable std::optional<const i_window*> iRoot;
+        mutable std::optional<const i_device_metrics*> iDeviceMetrics;
         widget_list iChildren;
         bool iAddingChild;
         i_widget* iLinkBefore;
         i_widget* iLinkAfter;
         i_layout* iParentLayout;
+        bool iResizing;
         bool iLayoutPending;
         uint32_t iLayoutInProgress;
         optional<neogfx::layout_reason> iLayoutReason;

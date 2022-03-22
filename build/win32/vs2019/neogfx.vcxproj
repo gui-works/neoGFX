@@ -238,18 +238,23 @@
     <ClInclude Include="..\..\..\include\neogfx\app\resource_manager.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\app\settings.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\app\style.hpp" />
-    <ClInclude Include="..\..\..\include\neogfx\audio\audio_beeper_sample.hpp" />
-    <ClInclude Include="..\..\..\include\neogfx\audio\audio_playback_device.hpp" />
-    <ClInclude Include="..\..\..\include\neogfx\audio\audio_spec.hpp" />
-    <ClInclude Include="..\..\..\include\neogfx\audio\audio_track.hpp" />
-    <ClInclude Include="..\..\..\include\neogfx\audio\audio_beeper.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_bitstream.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_bitstream.ipp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_device.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_instrument.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_instrument_atlas.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_oscillator.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_primitives.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\audio_waveform.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\audio\i_audio.hpp" />
-    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_beeper.hpp" />
-    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_beeper_sample.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_bitstream.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_device.hpp" />
-    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_playback_device.hpp" />
-    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_sample.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_instrument.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_instrument_atlas.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_oscillator.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_track.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\audio\i_audio_waveform.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\core\alignment.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\core\i_object.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\core\transition_animator.hpp" />
@@ -454,6 +459,7 @@
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\i_tab_page.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\i_tab_page_container.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\i_text_document.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\gui\widget\i_text_widget.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\i_title_bar.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\i_tool.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\i_widget.hpp" />
@@ -484,6 +490,7 @@
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\text_field.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\text_widget.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\normal_title_bar.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\gui\widget\timer.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\toolbar.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\toolbar_button.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\gui\widget\tool_title_bar.hpp" />
@@ -524,11 +531,13 @@
     <ClInclude Include="..\..\..\include\neogfx\hid\window_manager.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\neogfx.hpp" />
     <ClInclude Include="..\..\..\include\neogfx\support\file\gfx\gltf.hpp" />
+    <ClInclude Include="..\..\..\include\neogfx\support\file\gfx\svg.hpp" />
     <ClInclude Include="..\..\..\src\app\native\3rdparty\tinyfiledialogs.h" />
     <ClInclude Include="..\..\..\src\app\native\i_native_clipboard.hpp" />
     <ClInclude Include="..\..\..\src\app\native\windows_basic_services.hpp" />
     <ClInclude Include="..\..\..\src\app\native\windows_com.hpp" />
     <ClInclude Include="..\..\..\src\app\native\windows_drag_drop.hpp" />
+    <ClInclude Include="..\..\..\src\audio\3rdparty\miniaudio\miniaudio.h" />
     <ClInclude Include="..\..\..\src\gfx\native\i_native_texture.hpp" />
     <ClInclude Include="..\..\..\src\gfx\native\opengl.hpp" />
     <ClInclude Include="..\..\..\src\gfx\native\opengl_error.hpp" />
@@ -576,11 +585,14 @@
     <ClCompile Include="..\..\..\src\app\resource_manager.cpp" />
     <ClCompile Include="..\..\..\src\app\settings.cpp" />
     <ClCompile Include="..\..\..\src\app\style.cpp" />
-    <ClCompile Include="..\..\..\src\audio\audio_beeper.cpp" />
-    <ClCompile Include="..\..\..\src\audio\audio_beeper_sample.cpp" />
+    <ClCompile Include="..\..\..\src\audio\3rdparty\smb\smbPitchShift.cpp" />
+    <ClCompile Include="..\..\..\src\audio\audio.cpp" />
+    <ClCompile Include="..\..\..\src\audio\audio_bitstream.cpp" />
     <ClCompile Include="..\..\..\src\audio\audio_device.cpp" />
-    <ClCompile Include="..\..\..\src\audio\audio_playback_device.cpp" />
-    <ClCompile Include="..\..\..\src\audio\audio_track.cpp" />
+    <ClCompile Include="..\..\..\src\audio\audio_instrument.cpp" />
+    <ClCompile Include="..\..\..\src\audio\audio_instrument_atlas.cpp" />
+    <ClCompile Include="..\..\..\src\audio\audio_oscillator.cpp" />
+    <ClCompile Include="..\..\..\src\audio\audio_waveform.cpp" />
     <ClCompile Include="..\..\..\src\core\transition_animator.cpp" />
     <ClCompile Include="..\..\..\src\core\async_task.cpp" />
     <ClCompile Include="..\..\..\src\core\async_thread.cpp" />
@@ -693,6 +705,7 @@
     <ClCompile Include="..\..\..\src\gui\widget\text_field.cpp" />
     <ClCompile Include="..\..\..\src\gui\widget\text_widget.cpp" />
     <ClCompile Include="..\..\..\src\gui\widget\normal_title_bar.cpp" />
+    <ClCompile Include="..\..\..\src\gui\widget\timer.cpp" />
     <ClCompile Include="..\..\..\src\gui\widget\toolbar.cpp" />
     <ClCompile Include="..\..\..\src\gui\widget\toolbar_button.cpp" />
     <ClCompile Include="..\..\..\src\gui\widget\tool_title_bar.cpp" />
@@ -771,12 +784,12 @@
     <None Include="..\..\..\include\neogfx\gfx\color.inl" />
     <None Include="..\..\..\include\neogfx\gfx\path.inl" />
     <None Include="..\..\..\include\neogfx\gfx\shader_program.inl" />
-    <None Include="..\..\..\include\neogfx\gfx\text\glyph.tpp" />
-    <None Include="..\..\..\include\neogfx\gui\view\view_container.tpp" />
-    <None Include="..\..\..\include\neogfx\gui\widget\button.tpp" />
-    <None Include="..\..\..\include\neogfx\gui\widget\scrollable_widget.tpp" />
-    <None Include="..\..\..\include\neogfx\gui\widget\slider.tpp" />
-    <None Include="..\..\..\include\neogfx\gui\widget\spin_box.tpp" />
+    <None Include="..\..\..\include\neogfx\gfx\text\glyph.ipp" />
+    <None Include="..\..\..\include\neogfx\gui\view\view_container.ipp" />
+    <None Include="..\..\..\include\neogfx\gui\widget\button.ipp" />
+    <None Include="..\..\..\include\neogfx\gui\widget\scrollable_widget.ipp" />
+    <None Include="..\..\..\include\neogfx\gui\widget\slider.ipp" />
+    <None Include="..\..\..\include\neogfx\gui\widget\spin_box.ipp" />
     <CustomBuild Include="..\..\..\src\resources.nrc">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(DevDirNeogfx)/tools/bin/nrc %(Identity) $(IntDir)/GeneratedFiles</Command>
@@ -788,8 +801,8 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Tools|x64'">$(IntDir)/GeneratedFiles/resources.res.cpp</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Tools_Debug|x64'">$(IntDir)/GeneratedFiles/resources.res.cpp</Outputs>
     </CustomBuild>
-    <None Include="..\..\..\include\neogfx\gui\widget\tab_page_container.tpp" />
-    <None Include="..\..\..\include\neogfx\gui\widget\widget.tpp" />
+    <None Include="..\..\..\include\neogfx\gui\widget\tab_page_container.ipp" />
+    <None Include="..\..\..\include\neogfx\gui\widget\widget.ipp" />
     <None Include="..\..\..\src\gui\layout\flow_layout.inl" />
     <None Include="..\..\..\src\gui\layout\layout.inl" />
     <CustomBuild Include="..\..\..\src\icons.nrc">

@@ -24,7 +24,7 @@
 #include <optional>
 #include <boost/pool/pool_alloc.hpp>
 #include <neolib/core/map.hpp>
-#include <neolib/task/timer.hpp>
+#include <neogfx/gui/widget/timer.hpp>
 #include <neolib/app/application.hpp>
 #include <neogfx/core/async_thread.hpp>
 #include <neogfx/app/i_basic_services.hpp>
@@ -59,7 +59,7 @@ namespace neogfx
         boost::program_options::variables_map iOptions;
     };
 
-    class app : public async_thread, public neolib::application<i_app>, private i_keyboard_handler
+    class app : public neolib::application<i_app>, public async_thread, private i_keyboard_handler
     {
         typedef neolib::application<i_app> base_type;
     public:

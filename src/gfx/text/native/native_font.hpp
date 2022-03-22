@@ -25,6 +25,7 @@
 #include <neolib/core/variant.hpp>
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include <harfbuzz/hb.h>
 #include "i_native_font.hpp"
 #include "i_native_font_face.hpp"
 
@@ -50,19 +51,24 @@ namespace neogfx
         i_string const& family_name() const override;
         bool has_style(font_style aStyle) const override;
         uint32_t style_count() const override;
-        font_style style(uint32_t aStyleIndex) const override;
+        font_style style(uint32_t aStyle) const override;
         i_string const& style_name(uint32_t aStyleIndex) const override;
+        void remove_style(font_style aStyleIndex) override;
+        void remove_style(uint32_t aStyleIndex) override;
         void create_face(font_style aStyle, font::point_size aSize, const i_device_resolution& aDevice, i_ref_ptr<i_native_font_face>& aResult) override;
         void create_face(i_string const& aStyleName, font::point_size aSize, const i_device_resolution& aDevice, i_ref_ptr<i_native_font_face>& aResult) override;
     private:
+        style_map::const_iterator find_style(font_style aStyle) const;
+        void register_faces();
         void register_face(FT_Long aFaceIndex);
-        FT_Face open_face(FT_Long aFaceIndex);
+        std::pair<FT_Face, hb_face_t*> open_face(FT_Long aFaceIndex);
         void close_face(FT_Face aFace);
         ref_ptr<i_native_font_face> create_face(FT_Long aFaceIndex, font_style aStyle, font::point_size aSize, const i_device_resolution& aDevice);
     private:
         FT_Library iFontLib;
         source_type iSource;
         std::vector<unsigned char> iCache;
+        hb_blob_t* iHarfbuzzBlob = nullptr;
         string iFamilyName;
         FT_Long iFaceCount;
         style_map iStyleMap;

@@ -30,11 +30,15 @@ namespace neogfx
     class i_tab_page_container : public i_tab_container
     {
     public:
+        declare_event(tab_page_added, i_tab_page&)
+        declare_event(tab_page_removed, i_tab_page&)
         declare_event(selected_tab_page_changed, i_tab_page&)
     public:
         typedef uint32_t tab_index;
     public:
         struct tab_page_not_found : std::logic_error { tab_page_not_found() : std::logic_error("neogfx::i_tab_page_container::tab_page_not_found") {} };
+    public:
+        virtual i_tab_container& tab_bar() = 0;
     public:
         virtual i_layout& page_layout() = 0;
     public:
@@ -47,5 +51,6 @@ namespace neogfx
         virtual i_tab_page& add_tab_page(i_tab& aTab) = 0;
         virtual i_tab_page& add_tab_page(i_tab& aTab, i_tab_page& aWidget) = 0;
         virtual i_tab_page& add_tab_page(i_tab& aTab, i_ref_ptr<i_tab_page> const& aWidget) = 0;
+        virtual void remove_tab_page(i_tab_page& aPage) = 0;
     };
 }

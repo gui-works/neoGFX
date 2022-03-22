@@ -49,6 +49,7 @@ namespace neogfx
         define_event(CellEntered, cell_entered, item_presentation_model_index const&)
         define_event(CellLeft, cell_left, item_presentation_model_index const&)
         define_event(CellContextMenu, cell_context_menu, item_presentation_model_index const&)
+        define_event(CellAction, cell_action, item_presentation_model_index const&)
     public:
         struct no_model : std::logic_error { no_model() : std::logic_error("neogfx::item_view::no_model") {} };
         struct no_presentation_model : std::logic_error { no_presentation_model() : std::logic_error("neogfx::item_view::no_presentation_model") {} };
@@ -77,16 +78,14 @@ namespace neogfx
         i_item_selection_model& selection_model();
         void set_selection_model(i_item_selection_model& aSelectionModel);
         void set_selection_model(i_ref_ptr<i_item_selection_model> const& aSelectionModel);
-        const optional_easing& default_transition() const;
-        double default_transition_duration() const;
-        void set_default_transition(const optional_easing& aTransition, double aTransitionDuration = 0.5);
     public:
         bool hot_tracking() const;
         void enable_hot_tracking();
         void disable_hot_tracking();
     public:
+        bool is_valid(item_presentation_model_index const& aItemIndex) const;
         bool is_visible(item_presentation_model_index const& aItemIndex) const;
-        bool make_visible(item_presentation_model_index const& aItemIndex, const optional_easing& aTransition = {}, const std::optional<double>& aTransitionDuration = {});
+        bool make_visible(item_presentation_model_index const& aItemIndex);
         const optional_item_presentation_model_index& editing() const;
         void edit(item_presentation_model_index const& aItemIndex);
         void begin_edit();
@@ -142,6 +141,7 @@ namespace neogfx
         neogfx::scrolling_disposition scrolling_disposition() const override;
         void update_scrollbar_visibility() override;
         void update_scrollbar_visibility(usv_stage_e aStage) override;
+        bool use_scrollbar_container_updater() const override;
     protected:
         virtual void column_info_changed(item_model_index::value_type aColumnIndex);
         virtual void item_added(const item_model_index& aItemIndex);
@@ -152,6 +152,7 @@ namespace neogfx
         virtual void item_added(item_presentation_model_index const& aItemIndex);
         virtual void item_changed(item_presentation_model_index const& aItemIndex);
         virtual void item_removed(item_presentation_model_index const& aItemIndex);
+        virtual void items_updated();
         virtual void items_sorting();
         virtual void items_sorted();
         virtual void items_filtering();
@@ -184,9 +185,10 @@ namespace neogfx
         ref_ptr<i_item_model> iModel;
         ref_ptr<i_item_presentation_model> iPresentationModel;
         ref_ptr<i_item_selection_model> iSelectionModel;
+        optional_item_presentation_model_index iVisibleItem;
         bool iHotTracking;
         bool iIgnoreNextMouseMove;
-        std::optional<neolib::callback_timer> iMouseTracker;
+        std::optional<widget_timer> iMouseTracker;
         optional_item_presentation_model_index iEditing;
         std::shared_ptr<i_item_editor> iEditor;
         bool iBeginningEdit;
@@ -196,8 +198,6 @@ namespace neogfx
         optional_item_presentation_model_index iClickedCheckBox;
         optional_item_model_index iSavedModelIndex;
         basic_size<i_scrollbar::value_type> iOldPositionForScrollbarVisibility;
-        optional_easing iDefaultTransition;
-        double iDefaultTransitionDuration;
         std::optional<drag_drop_item> iDragDropItem;
     };
 }

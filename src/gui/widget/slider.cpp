@@ -20,7 +20,7 @@
 #include <neogfx/neogfx.hpp>
 #include <neogfx/app/i_app.hpp>
 #include <neogfx/gui/widget/slider.hpp>
-#include <neogfx/gui/widget/slider.tpp>
+#include <neogfx/gui/widget/slider.ipp>
 
 namespace neogfx
 {
@@ -219,8 +219,8 @@ namespace neogfx
 
     void slider_impl::init()
     {
-        ValueChanged.set_trigger_type(event_trigger_type::Asynchronous);
-        ConstraintsChanged.set_trigger_type(event_trigger_type::Asynchronous);
+        ValueChanged.set_trigger_type(trigger_type::Asynchronous);
+        ConstraintsChanged.set_trigger_type(trigger_type::Asynchronous);
 
         set_padding(neogfx::padding{});
     }

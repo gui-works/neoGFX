@@ -19,7 +19,7 @@
 
 #include <neogfx/tools/DesignStudio/DesignStudio.hpp>
 #include <neogfx/app/i_app.hpp>
-#include <neogfx/gui/widget/widget.tpp>
+#include <neogfx/gui/widget/widget.ipp>
 #include <neogfx/gui/window/context_menu.hpp>
 #include <neogfx/tools/DesignStudio/i_element_library.hpp>
 #include "widget_caddy.hpp"
@@ -35,7 +35,7 @@ namespace neogfx::DesignStudio
         widget{ aParent },
         iProject{ aProject },
         iElement{ aElement },
-        iAnimator{ service<i_async_task>(), [this](neolib::callback_timer& aAnimator) 
+        iAnimator{ *this, [this](widget_timer& aAnimator) 
         {    
             aAnimator.again();
             if (has_element() && (element().mode() != element_mode::None || element().is_selected() || entered()))

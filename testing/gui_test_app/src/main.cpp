@@ -271,6 +271,10 @@ int main(int argc, char* argv[])
 
         test::main_window window{ app };
 
+        auto ds = window.textEdit.default_style();
+        ds.paragraph().set_padding(ng::padding{ 0, 4.0_dip });
+        window.textEdit.set_default_style(ds);
+
         window.textEdit.ObjectAcceptable([&](ng::i_drag_drop_object const& aObject, ng::drop_operation& aAcceptableAs)
         {
             if (aObject.ddo_type() == ng::i_drag_drop_file_list::otid())
@@ -470,34 +474,34 @@ int main(int argc, char* argv[])
         window.button7.clicked([&app]() { app.actionMute.toggle(); });
         window.button8.clicked([&app]() { if (app.actionContacts.is_enabled()) app.actionContacts.disable(); else app.actionContacts.enable(); });
         prng.seed(3);
-        auto transitionPrng = prng;
-        std::vector<ng::transition_id> transitions;
+//        auto transitionPrng = prng;
+//        std::vector<ng::transition_id> transitions;
         for (uint32_t i = 0; i < 10; ++i)
         {
             auto& button = window.layout3.emplace<ng::push_button>(std::string(1, 'A' + i));
             ng::color randomColor = ng::color{ prng(255), prng(255), prng(255) };
             button.set_base_color(randomColor);
             button.clicked([&, randomColor]() { window.textEdit.set_palette_color(ng::color_role::Background, randomColor.same_lightness_as(app.current_style().palette().color(ng::color_role::Background))); });
-            transitions.push_back(ng::service<ng::i_animator>().add_transition(button.Position, ng::easing::OutBounce, transitionPrng.get(1.0, 2.0), false));
+//            transitions.push_back(ng::service<ng::i_animator>().add_transition(button.Position, ng::easing::OutBounce, transitionPrng.get(1.0, 2.0), false));
         }
-        ng::event<> startAnimation;
-        startAnimation([&window, &transitions, &transitionPrng]()
-        {
-            for (auto t : transitions)
-                ng::service<ng::i_animator>().transition(t).reset(true, true);
-            for (auto i = 0u; i < window.layout3.count(); ++i)
-            {
-                auto& button = window.layout3.get_widget_at(i);
-                auto finalPosition = button.position();
-                button.set_position(ng::point{ finalPosition.x, finalPosition.y - transitionPrng.get(600.0, 800.0) }.ceil());
-                button.set_position(finalPosition);
-            }
-        });
-        window.mainWindow.Window([&startAnimation](const ng::window_event& aEvent)
-        { 
-            if (aEvent.type() == ng::window_event_type::Resized)
-                startAnimation.async_trigger(); 
-        });
+//        ng::event<> startAnimation;
+//        startAnimation([&window, &transitions, &transitionPrng]()
+//        {
+//            for (auto t : transitions)
+//                ng::service<ng::i_animator>().transition(t).reset(true, true);
+//            for (auto i = 0u; i < window.layout3.count(); ++i)
+//            {
+//                auto& button = window.layout3.get_widget_at(i);
+//                auto finalPosition = button.position();
+//                button.set_position(ng::point{ finalPosition.x, finalPosition.y - transitionPrng.get(600.0, 800.0) }.ceil());
+//                button.set_position(finalPosition);
+//            }
+//        });
+//        window.mainWindow.Window([&startAnimation](const ng::window_event& aEvent)
+//        { 
+//            if (aEvent.type() == ng::window_event_type::Resized)
+//                startAnimation.async_trigger(); 
+//        });
         auto showHideTabs = [&window]()
         {
             if (window.checkTriState.is_checked())
@@ -550,22 +554,24 @@ int main(int argc, char* argv[])
             window.labelFPS.hide();
         });
         window.labelFPS.hide();
+        std::optional<ng::sink> sink1;
         window.checkColumns.checked([&]()
         {
             window.checkPassword.disable();
             window.textEdit.set_columns(3);
-            window.gradientWidget.GradientChanged([&]()
+            sink1.emplace();
+            *sink1 += window.gradientWidget.GradientChanged([&]()
             {
                 auto cs = window.textEdit.column(2);
                 cs.set_style(ng::text_edit::character_style{ ng::optional_font{}, ng::color_or_gradient{}, ng::color_or_gradient{}, ng::text_effect{ ng::text_effect_type::Outline, ng::color::White } });
                 window.textEdit.set_column(2, cs);
-            }, window.textEdit);
+            });
         });
         window.checkColumns.Unchecked([&]()
         {
             window.checkPassword.enable();
             window.textEdit.remove_columns();
-            window.gradientWidget.GradientChanged.unsubscribe(window.textEdit);
+            sink1 = std::nullopt;
         });
         window.checkKerning.Toggled([&app, &window]()
         {
@@ -974,7 +980,7 @@ int main(int argc, char* argv[])
         ng::basic_item_model<ng::easing> easingItemModelUpperTableView;
         window.dropListEasingUpperTableView.SelectionChanged([&](const ng::optional_item_model_index& aIndex) 
         { 
-            tableView1.set_default_transition(easingItemModelUpperTableView.item(*aIndex), 0.75); 
+            tableView1.vertical_scrollbar().set_transition(easingItemModelUpperTableView.item(*aIndex), 0.75); 
         });
         for (auto i = 0; i < ng::standard_easings().size(); ++i)
             easingItemModelUpperTableView.insert_item(easingItemModelUpperTableView.end(), ng::standard_easings()[i], ng::to_string(ng::standard_easings()[i]));
@@ -988,7 +994,7 @@ int main(int argc, char* argv[])
         ng::basic_item_model<ng::easing> easingItemModelLowerTableView;
         window.dropListEasingLowerTableView.SelectionChanged([&](const ng::optional_item_model_index& aIndex)
         {
-            tableView2.set_default_transition(easingItemModelLowerTableView.item(*aIndex), 0.75);
+            tableView2.vertical_scrollbar().set_transition(easingItemModelLowerTableView.item(*aIndex), 0.75);
         });
         for (auto i = 0; i < ng::standard_easings().size(); ++i)
             easingItemModelLowerTableView.insert_item(easingItemModelLowerTableView.end(), ng::standard_easings()[i], ng::to_string(ng::standard_easings()[i]));

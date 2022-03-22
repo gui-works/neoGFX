@@ -128,8 +128,8 @@ namespace neogfx
         bool ignore_visibility() const override;
         void set_ignore_visibility(bool aIgnoreVisibility, bool aUpdateLayout = true) override;
     public:
-        void enable() override;
-        void disable() override;
+        using i_layout::enable;
+        void enable(bool aEnable) override;
         bool enabled() const override;
         bool invalidated() const override;
         void invalidate(bool aDeferLayout = true) override;
@@ -182,6 +182,7 @@ namespace neogfx
     private:
         i_layout* iParent;
         mutable i_widget* iOwner;
+        mutable std::optional<const i_device_metrics*> iDeviceMetrics;
         optional_size iSpacing;
         bool iAlwaysUseSpacing;
         neogfx::alignment iAlignment;

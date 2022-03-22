@@ -17,10 +17,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <chrono>
 #include <neogfx/hid/i_surface_manager.hpp>
+#include <neogfx/audio/audio_waveform.hpp>
+#include <neogfx/audio/audio_instrument.hpp>
 #include <neogfx/tools/DesignStudio/DesignStudio.hpp>
 #include "app.hpp"
 
+using namespace std::chrono_literals;
 using namespace neogfx::string_literals;
 
 int main(int argc, char* argv[])
@@ -39,6 +43,31 @@ int main(int argc, char* argv[])
     std::cout << appInfo.copyright() << std::endl << std::endl;
 
     ds::app app{ appInfo };
+
+#if 0
+    auto& playbackDevice = ng::service<ng::i_audio>().create_playback_device(
+        ng::audio_data_format{ ng::audio_sample_format::F32, 2u, 48000u });
+    playbackDevice.start();
+
+    float const amplitude = 0.25f;
+
+    ng::audio_waveform waveform{ playbackDevice, amplitude };
+    float const componentAmplitude = 0.1f;
+    waveform.create_oscillator(ng::frequency<ng::note::C4>(), componentAmplitude);
+    waveform.create_oscillator(ng::frequency<ng::note::C5>(), componentAmplitude);
+    waveform.create_oscillator(ng::frequency<ng::note::C8>(), componentAmplitude);
+
+    ng::audio_instrument churchOrgan{ playbackDevice, ng::instrument::ChurchOrgan, amplitude };
+    churchOrgan.set_envelope(ng::adsr_envelope{ 0.1f, 0.0f, 1.0f, 0.1f });
+    churchOrgan.play_note(5s, ng::note::G4, 6s);
+    churchOrgan.play_note(6s, ng::note::A4, 5s);
+    churchOrgan.play_note(7s, ng::note::F4, 4s);
+    churchOrgan.play_note(8s, ng::note::F3, 3s);
+    churchOrgan.play_note(9s, ng::note::C4, 2s);
+
+    playbackDevice.play(waveform, 15s);
+    playbackDevice.play(churchOrgan, 15s);
+#endif
 
     try
     {

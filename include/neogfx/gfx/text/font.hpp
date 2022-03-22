@@ -33,19 +33,23 @@ namespace neogfx
 
     enum class font_style : uint32_t
     {
-        Invalid = 0x00,
-        Normal = 0x01,
-        Italic = 0x02,
-        Bold = 0x04,
-        Underline = 0x08,
-        Superscript = 0x10,
-        Subscript = 0x20,
-        BelowAscenderLine = 0x40,
-        AboveBaseline = 0x40,
+        Invalid             = 0x00000000,
+        Normal              = 0x00000001,
+        Italic              = 0x00000002,
+        Bold                = 0x00000004,
+        Underline           = 0x00000008,
+        Superscript         = 0x00000010,
+        Subscript           = 0x00000020,
+        BelowAscenderLine   = 0x00000040,
+        AboveBaseline       = 0x00000040,
+        Emulated            = 0x80000000,
         BoldItalic = Bold | Italic,
         BoldItalicUnderline = Bold | Italic | Underline,
         BoldUnderline = Bold | Underline,
-        ItalicUnderline = Italic | Underline
+        ItalicUnderline = Italic | Underline,
+        EmulatedBold = Bold | Emulated,
+        EmulatedItalic = Italic | Emulated,
+        EmulatedBoldItalic = Bold | Italic | Emulated
     };
 
     inline constexpr font_style operator~(font_style aLhs)
@@ -63,6 +67,11 @@ namespace neogfx
         return static_cast<font_style>(static_cast<uint32_t>(aLhs) & static_cast<uint32_t>(aRhs));
     }
 
+    inline constexpr font_style operator^(font_style aLhs, font_style aRhs)
+    {
+        return static_cast<font_style>(static_cast<uint32_t>(aLhs) ^ static_cast<uint32_t>(aRhs));
+    }
+
     inline constexpr font_style& operator|=(font_style& aLhs, font_style aRhs)
     {
         return aLhs = static_cast<font_style>(static_cast<uint32_t>(aLhs) | static_cast<uint32_t>(aRhs));
@@ -71,6 +80,11 @@ namespace neogfx
     inline constexpr font_style& operator&=(font_style& aLhs, font_style aRhs)
     {
         return aLhs = static_cast<font_style>(static_cast<uint32_t>(aLhs) & static_cast<uint32_t>(aRhs));
+    }
+
+    inline constexpr font_style& operator^=(font_style& aLhs, font_style aRhs)
+    {
+        return aLhs = static_cast<font_style>(static_cast<uint32_t>(aLhs) ^ static_cast<uint32_t>(aRhs));
     }
 }
 
@@ -84,16 +98,21 @@ declare_enum_string(neogfx::font_style, Superscript)
 declare_enum_string(neogfx::font_style, Subscript)
 declare_enum_string(neogfx::font_style, BelowAscenderLine)
 declare_enum_string(neogfx::font_style, AboveBaseline)
+declare_enum_string(neogfx::font_style, Emulated)
 declare_enum_string(neogfx::font_style, BoldItalic)
 declare_enum_string(neogfx::font_style, BoldItalicUnderline)
 declare_enum_string(neogfx::font_style, BoldUnderline)
 declare_enum_string(neogfx::font_style, ItalicUnderline)
+declare_enum_string(neogfx::font_style, EmulatedBold)
+declare_enum_string(neogfx::font_style, EmulatedItalic)
+declare_enum_string(neogfx::font_style, EmulatedBoldItalic)
 end_declare_enum(neogfx::font_style)
 
 namespace neogfx 
 {
     enum class font_weight : uint32_t
     {
+        Unknown = 0,
         Thin = 100,
         Extralight = 200,
         Ultralight = 200,
@@ -150,6 +169,7 @@ namespace neogfx
         virtual void disable_kerning();
     public:
         font_info with_style(font_style aStyle) const;
+        font_info with_style_xor(font_style aStyle) const;
         font_info with_underline(bool aUnderline) const;
         font_info with_size(point_size aSize) const;
     public:
@@ -158,7 +178,7 @@ namespace neogfx
         bool operator<(const font_info& aRhs) const;
     public:
         static font_weight weight_from_style(font_style aStyle);
-        static font_weight weight_from_style_name(std::string aStyleName);
+        static font_weight weight_from_style_name(std::string aStyleName, bool aUnknownAsRegular = true);
     private:
         mutable std::shared_ptr<instance> iInstance;
     };

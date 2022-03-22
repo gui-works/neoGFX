@@ -57,6 +57,17 @@ namespace neogfx
         Thumb            = 0x06
     };
 
+    enum class scrollbar_zone
+    {
+        Top,
+        Middle,
+        Bottom,
+        Left = Top,
+        Right = Bottom
+    };
+
+    class i_transition;
+
     class i_scrollbar_container;
 
     class i_scrollbar : public i_property_owner
@@ -91,8 +102,13 @@ namespace neogfx
         virtual bool auto_hide() const = 0;
         virtual void set_auto_hide(bool aAutoHide) = 0;
         virtual bool auto_hidden() const = 0;
+        virtual scrollbar_zone zone() const = 0;
+        virtual void push_zone() = 0;
+        virtual scrollbar_zone pop_zone() = 0;
         virtual value_type position() const = 0;
-        virtual bool set_position(value_type aPosition, const optional_easing& aTransition = {}, double aTransitionDuration = 0.5) = 0;
+        virtual value_type effective_position() const = 0;
+        virtual value_type maximum_position() const = 0;
+        virtual bool set_position(value_type aPosition) = 0;
         virtual value_type minimum() const = 0;
         virtual void set_minimum(value_type aMinimum) = 0;
         virtual value_type maximum() const = 0;
@@ -110,7 +126,7 @@ namespace neogfx
         virtual void render(i_graphics_context& aGc) const = 0;
     public:
         virtual rect element_geometry(scrollbar_element aElement) const = 0;
-        virtual scrollbar_element element_at(const point& aPosition) const = 0;
+        virtual scrollbar_element element_at(point const& aPosition) const = 0;
     public:
         virtual void update(const update_params_t& aUpdateParams = update_params_t()) = 0;
         virtual scrollbar_element clicked_element() const = 0;
@@ -123,10 +139,15 @@ namespace neogfx
         virtual void resume() = 0;
         virtual void track() = 0;
         virtual void untrack() = 0;
+    public:
+        virtual bool transition_set() const noexcept = 0;
+        virtual void set_transition(easing aTransition, double aTransitionDuration = 0.5, bool aOnlyWhenPaging = true) = 0;
+        virtual void clear_transition() = 0;
     };
 
     class i_scrollbar_container
     {
+        friend class scrollbar_container_updater;
     public:
         virtual rect scroll_area() const = 0;
     public:
@@ -136,5 +157,20 @@ namespace neogfx
     public:
         virtual const i_widget& as_widget() const = 0;
         virtual i_widget& as_widget() = 0;
+    protected:
+        virtual void update_scrollbar_visibility() = 0;
+    };
+
+    class i_scrollbar_container_updater : public i_service
+    {
+    public:
+        virtual void queue(i_scrollbar_container& aContainer) = 0;
+        virtual void unqueue(i_scrollbar_container& aContainer) = 0;
+        virtual bool processing() const = 0;
+        virtual void process() = 0;
+        virtual i_scrollbar_container& current() const = 0;
+    public:
+        // {76C8BC39-25EA-4E55-B41C-4798E609E5B9}
+        static uuid const& iid() { static uuid const sIid{ 0x76c8bc39, 0x25ea, 0x4e55, 0xb41c, { 0x47, 0x98, 0xe6, 0x9, 0xe5, 0xb9 } }; return sIid; }
     };
 }
